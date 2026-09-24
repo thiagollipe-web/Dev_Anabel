@@ -414,10 +414,23 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     try{
       const url="https://api.mymemory.translated.net/get?q="+encodeURIComponent(original.slice(0,480))+"&langpair=en|pt-BR";
       const data=await httpJson(url,8000);
-      return data?.responseData?.translatedText||original;
-    }catch(e){
-      return original.replace(/\bprogramming\b/gi,"programação").replace(/\bgame\b/gi,"jogo").replace(/\bstrategy\b/gi,"estratégia").replace(/\blibrary\b/gi,"biblioteca").replace(/\bfunction\b/gi,"função").replace(/\bdata\b/gi,"dados");
-    }
+      const translated=data?.responseData?.translatedText;
+      if(translated)return translated;
+    }catch(e){}
+    return original
+      .replace(/\bThis function is a reusable block of code\.?/gi,"Esta função é um bloco reutilizável de código.")
+      .replace(/\bThis\b/gi,"Esta")
+      .replace(/\bthat\b/gi,"que")
+      .replace(/\bfunction\b/gi,"função")
+      .replace(/\breusable\b/gi,"reutilizável")
+      .replace(/\bblock of code\b/gi,"bloco de código")
+      .replace(/\bcode\b/gi,"código")
+      .replace(/\bprogramming\b/gi,"programação")
+      .replace(/\bgame\b/gi,"jogo")
+      .replace(/\bstrategy\b/gi,"estratégia")
+      .replace(/\blibrary\b/gi,"biblioteca")
+      .replace(/\bdata\b/gi,"dados")
+      .replace(/\bweb\b/gi,"web");
   }
 
   async function ideas(query){

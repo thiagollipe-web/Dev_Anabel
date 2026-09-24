@@ -85,7 +85,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
 "use strict";
 (()=> {
   const $=(s,r=document)=>r.querySelector(s);
-  const $=(s,r=document)=>[...r.querySelectorAll(s)];
+  const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
   const canvas=$("#terminal"),ctx=canvas.getContext("2d",{alpha:false});
   const editor=$("#editor"),sandbox=$("#sandbox"),input=$("#input"),send=$("#send");
   const fileInput=$("#file-input"),sources=$("#sources"),status=$("#status");
@@ -251,7 +251,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     result.forEach((r,i)=>{
       if(r.status!=="fulfilled")return;
       const kind=urls[i][0],data=r.value;
-      const items=kind==="WIKIPEDIA"?(data.pages||[]).map(x=>({title:x.title||x.key,url:x.content_urls?.desktop?.page||("https://pt.wikipedia.org/wiki/"+encodeURIComponent(x.key||x.title)),note:x.description||"")):
+      const items=kind==="WIKIPEDIA"?(data.pages||[]).map(x=>({title:x.title||x.key,url:x.content_urls?.desktop?.page||("https://pt.wikipedia.org/wiki/"+encodeURIComponent(x.key||x.title)),note:x.description||""})):
         kind==="STACKOVERFLOW"?(data.items||[]).map(x=>({title:x.title,url:x.link,note:(x.tags||[]).join(", ")})):
         (data.items||[]).map(x=>({title:x.full_name,url:x.html_url,note:(x.stargazers_count||0)+" stars · "+(x.description||"sem descrição")}));
       items.forEach(x=>{if(x.url&&!seen.has(x.url)){seen.add(x.url);found.push({kind,title:x.title,url:x.url,note:x.note});}});

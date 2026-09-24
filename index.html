@@ -1520,61 +1520,6 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   }
 
   const AI_ENDPOINT=localStorage.getItem("anabel-api-endpoint") || (location.hostname.endsWith(".vercel.app") ? "/api/gemini" : "https://dev-anabel.vercel.app/api/gemini");
-  const IS_LOCAL_ANABEL=["localhost","127.0.0.1"].includes(location.hostname);
-  const OLLAMA_ENDPOINT=IS_LOCAL_ANABEL ? "/api/ollama" : (localStorage.getItem("anabel-ollama-endpoint") || "http://127.0.0.1:11434/api/chat");
-  const OLLAMA_MODEL=localStorage.getItem("anabel-ollama-model") || "gemma4:31b-cloud";
-
-  async function callOllamaAssistant(query){
-    const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),45000);
-    try{
-      console.log("ANABEL OLLAMA: tentando", OLLAMA_ENDPOINT, "modelo", OLLAMA_MODEL);
-      status.textContent="IA LOCAL: conectando ao Ollama ("+OLLAMA_MODEL+")…";
-      const prompt="Você é a IA principal da Dev_Anabel. Responda em português do Brasil, com precisão técnica, de forma prática e direta. Se o usuário pedir código, entregue código funcional e explique os pontos críticos.\\n\\nPedido do usuário:\\n"+String(query).slice(0,12000);
-      const response=await fetch(OLLAMA_ENDPOINT,{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        mode:"cors",
-        body:JSON.stringify({
-          model:OLLAMA_MODEL,
-          messages:[
-            {role:"system",content:"Você é a IA principal da Dev_Anabel. Responda em português do Brasil e priorize programação, depuração, jogos, web e explicações técnicas."},
-            {role:"user",content:prompt}
-          ],
-          stream:false
-        }),
-        signal:controller.signal
-      });
-      const data=await response.json().catch(()=>({}));
-      const text=String(data?.message?.content||"").trim();
-      if(!response.ok||!text)throw new Error(data?.error||("HTTP "+response.status));
-      const model=String(data?.model||OLLAMA_MODEL);
-      log("ANABEL [OLLAMA / "+model.toUpperCase()+"]: "+text);
-      status.textContent="IA local ativa: "+model;
-      return true;
-    }catch(error){
-      const message=error?.name==="AbortError"?"tempo esgotado":String(error?.message||error||"falha desconhecida");
-      console.warn("Dev_Anabel Ollama:",message);
-      if(error?.name==="TypeError"){
-        console.error("ANABEL OLLAMA: provável CORS ou endpoint indisponível.", {endpoint:OLLAMA_ENDPOINT, model:OLLAMA_MODEL, error});
-        log(IS_LOCAL_ANABEL ? "ANABEL: o proxy local não conseguiu acessar o Ollama. Verifique se o Ollama está aberto." : "ANABEL: o navegador bloqueou o acesso direto ao Ollama. Para usar a IA do PC, execute start-anabel.bat e abra http://127.0.0.1:8787/.");
-      }else{
-        log("ANABEL: Ollama local indisponível → "+message);
-      }
-      return false;
-    }finally{
-      clearTimeout(timer);
-    }
-  }
-
-  async function testOllamaConnection(){
-    const ok=await callOllamaAssistant("Responda apenas: ANABEL OLLAMA OK");
-    if(!ok){
-      log(IS_LOCAL_ANABEL ? "ANABEL: teste Ollama falhou. Verifique o Ollama em http://127.0.0.1:11434." : "ANABEL: para usar a IA do PC sem bloqueio do navegador, execute start-anabel.bat e use http://127.0.0.1:8787/.");
-      status.textContent="Ollama não conectado; fallback disponível.";
-    }
-    return ok;
-  }
 
   async function callRemoteAssistant(query){
     if(await callOllamaAssistant(query))return true;
@@ -1595,8 +1540,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   }
 
   async function smartAnswer(query){
-    // Ollama is the primary free-form assistant when available.
-    // Gemini/Groq and the local knowledge engine remain fallbacks.
+    // API remota é a IA principal; motor local permanece como fallback.
     if(await callRemoteAssistant(query))return;
     if(await smartPythonAnswer(query))return;
     const item=known(query);
@@ -1685,7 +1629,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       return;
     }
 
-    if(i.type==="ollama"){await testOllamaConnection();return;}
+    if(i.type==="ollama"){await callRemoteAssistant("Responda apenas: ANABEL API OK");return;}
     if(i.type==="undo"){undo();return;}
     if(i.type==="confirm"){applyPending(i.value);return;}
     if(i.type==="run"){run(editor.value);return;}

@@ -178,7 +178,7 @@ if(!autoFix.summary.includes("correção")||autoFix.suggestions.length<4||autoFi
 
 await page.evaluate(()=>window.DevAnabel.undo());
 const undone=await page.evaluate(()=>document.querySelector("#editor").value);
-if(!undone.includes("var x=1;")||!undone.includes("console.log(x);")||!undone.includes('const f = function(a) { return a+1; };')||!undone.includes('const txt="var y"')) throw new Error("Undo falhou: "+undone);
+if(!undone.includes("var x=1;")||!undone.includes("console.log(x);")||!undone.includes('const f = function(a) { return a+1; };')||!undone.includes('const canvas=document.createElement("canvas");')||!undone.includes('const ctx=canvas.getContext("2d");')||!undone.includes("async function carregar()")) throw new Error("Undo falhou: "+undone);
 
 await page.evaluate(()=>window.DevAnabel.analyze());
 await page.locator("#input").fill("sim");

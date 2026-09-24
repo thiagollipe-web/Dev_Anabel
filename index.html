@@ -27,7 +27,7 @@ h1{margin:0;font-size:20px;letter-spacing:2px;text-transform:uppercase}
 .label{font-size:11px;color:var(--muted);margin-bottom:5px;text-transform:uppercase}
 canvas,#sandbox,#editor{width:100%;height:100%;min-height:0}
 canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0 0 20px var(--glow)}
-#editor-wrap{position:relative;flex:1;min-height:0;display:flex}#editor{flex:1;resize:none;background:#0b0b0b;color:var(--fg);border:2px solid var(--border);padding:12px;outline:none;white-space:pre;font:12px/1.4 "Courier New",monospace;tab-size:4}#editor-meta{position:absolute;top:5px;right:8px;z-index:4;font-size:9px;color:var(--muted);pointer-events:none;background:#000b;padding:2px 5px}#autocomplete{display:none;position:absolute;z-index:20;left:10px;top:10px;width:min(390px,calc(100% - 20px));max-height:210px;overflow:auto;background:#050505;border:1px solid var(--fg);box-shadow:0 0 15px var(--glow);font:11px/1.35 "Courier New",monospace}#autocomplete.show{display:block}.ac-item{display:grid;grid-template-columns:1fr auto;gap:8px;padding:6px 8px;cursor:pointer}.ac-item:hover,.ac-item.selected{background:var(--fg);color:#000}.ac-kind{opacity:.7}.ac-item.selected .ac-kind{opacity:.85}.ac-empty{padding:7px 8px;color:var(--muted)}
+#editor-wrap{position:relative;flex:1;min-height:0;display:flex}#line-numbers{flex:0 0 42px;overflow:hidden;white-space:pre;text-align:right;user-select:none;background:#070707;color:var(--muted);border:2px solid var(--border);border-right:0;padding:12px 7px 12px 3px;font:12px/1.4 "Courier New",monospace;tab-size:4;line-height:1.4}#editor{flex:1;min-width:0;resize:none;background:#0b0b0b;color:var(--fg);border:2px solid var(--border);padding:12px;outline:none;white-space:pre;font:12px/1.4 "Courier New",monospace;tab-size:4}#editor-meta{position:absolute;top:5px;right:8px;z-index:4;font-size:9px;color:var(--muted);pointer-events:none;background:#000b;padding:2px 5px}#autocomplete{display:none;position:absolute;z-index:20;left:10px;top:10px;width:min(390px,calc(100% - 20px));max-height:210px;overflow:auto;background:#050505;border:1px solid var(--fg);box-shadow:0 0 15px var(--glow);font:11px/1.35 "Courier New",monospace}#autocomplete.show{display:block}.ac-item{display:grid;grid-template-columns:1fr auto;gap:8px;padding:6px 8px;cursor:pointer}.ac-item:hover,.ac-item.selected{background:var(--fg);color:#000}.ac-kind{opacity:.7}.ac-item.selected .ac-kind{opacity:.85}.ac-empty{padding:7px 8px;color:var(--muted)}
 #sandbox{display:block;border:2px solid var(--border);background:#000}
 #controls{width:1400px;max-width:100%;display:flex;flex-direction:column;gap:7px}
 #input-row{display:flex;gap:6px}
@@ -73,7 +73,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
 </div>
 <main id="workspace">
 <section class="panel visible" id="p0"><div class="label">📟 Terminal CRT</div><canvas id="terminal" width="450" height="450"></canvas><div id="sources"></div></section>
-<section class="panel" id="p1"><div class="label">💻 Professor Python / Código Fonte</div><div id="editor-wrap"><textarea id="editor" spellcheck="false" placeholder="# Python: escreva aqui e pressione Ctrl+Espaço para sugestões..."></textarea><div id="editor-meta">LINGUAGEM: AUTO · AUTOCOMPLETE: CTRL+ESPAÇO</div><div id="autocomplete" role="listbox" aria-label="Sugestões de código"></div></div></section>
+<section class="panel" id="p1"><div class="label">💻 Professor Python / Código Fonte</div><div id="editor-wrap"><div id="line-numbers" aria-hidden="true">1</div><textarea id="editor" spellcheck="false" placeholder="# Python: escreva aqui e pressione Ctrl+Espaço para sugestões..."></textarea><div id="editor-meta">LINGUAGEM: AUTO · AUTOCOMPLETE: CTRL+ESPAÇO</div><div id="autocomplete" role="listbox" aria-label="Sugestões de código"></div></div></section>
 <section class="panel" id="p2"><div class="label">🚀 Sandbox de Execução</div><iframe id="sandbox" title="Live View" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe></section>
 </main>
 <section id="controls">
@@ -113,8 +113,9 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   const editor=$("#editor"),sandbox=$("#sandbox"),input=$("#input"),send=$("#send");
   const fileInput=$("#file-input"),sources=$("#sources"),status=$("#status");
   const reviewSummary=$("#review-summary"),reviewList=$("#review-list"),correctedOutput=$("#corrected-output"),copyCorrected=$("#copy-corrected");
-  const autocomplete=$("#autocomplete"),editorMeta=$("#editor-meta");
-  let runtimeKind="",pythonRuntimeReady=false,pendingPythonCode=null,acItems=[],acIndex=0,autonomousBusy=false,autonomousLastKey="",autonomousTimer=null;
+  const autocomplete=$("#autocomplete"),editorMeta=$("#editor-meta"),lineNumbers=$("#line-numbers");
+  const STORAGE_KEY="dev-anabel-session-v2";
+  let runtimeKind="",pythonRuntimeReady=false,pendingPythonCode=null,acItems=[],acIndex=0,autonomousBusy=false,autonomousLastKey="",autonomousTimer=null,saveTimer=null,resizeTimer=null,lastShownLanguage="";
   const state={
     theme:"green",color:"#00ff33",busy:false,queued:false,sandboxUrl:"",language:"auto",
     history:[
@@ -146,6 +147,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     i=Number(i);if(![0,1,2].includes(i))return;
     qsa(".tab").forEach((b,n)=>{b.classList.toggle("active",n===i);b.setAttribute("aria-selected",String(n===i));});
     qsa(".panel").forEach((p,n)=>p.classList.toggle("visible",n===i));
+    if(i===1){updateLineNumbers();saveSessionDebounced();}
     if(i===0)drawLater();
   }
   function theme(v){
@@ -171,7 +173,38 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   function setLanguage(lang){
     state.language=lang||"auto";
     const shown=state.language==="auto"?detectLanguage(editor.value):state.language;
+    if(lastShownLanguage&&lastShownLanguage!==shown)autocomplete.classList.remove("show");
+    lastShownLanguage=shown;
     if(editorMeta)editorMeta.textContent="LINGUAGEM: "+String(shown).toUpperCase()+" · AUTOCOMPLETE: CTRL+ESPAÇO / TAB";
+  }
+  function updateLineNumbers(){
+    if(!lineNumbers)return;
+    const count=Math.max(1,(editor.value.match(/\n/g)||[]).length+1);
+    lineNumbers.textContent=Array.from({length:count},(_,i)=>String(i+1)).join("\n");
+    lineNumbers.scrollTop=editor.scrollTop;
+  }
+  function saveSession(){
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify({code:editor.value,language:state.language,theme:state.theme,savedAt:Date.now()}));}catch(e){}
+  }
+  function saveSessionDebounced(){
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(()=>{saveTimer=null;saveSession();},250);
+  }
+  function restoreSession(){
+    try{
+      const raw=localStorage.getItem(STORAGE_KEY);
+      if(!raw)return false;
+      const saved=JSON.parse(raw);
+      if(!saved||typeof saved.code!=="string"||!saved.code.trim())return false;
+      editor.value=saved.code;
+      if(saved.language)state.language=saved.language;
+      if(saved.theme)theme(saved.theme);
+      setLanguage(state.language||"auto");
+      updateLineNumbers();
+      log("ANABEL: Bem-vindo de volta! Recuperei o código da última sessão.");
+      status.textContent="Sessão anterior recuperada automaticamente.";
+      return true;
+    }catch(e){return false;}
   }
   function pythonRuntimeHTML(){
     const pyodideCdn="https://cdn.jsdelivr.net/pyodide/v314.0.7/full/";

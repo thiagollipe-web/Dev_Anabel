@@ -70,8 +70,9 @@ const base=await page.evaluate(()=>({
   noLlm:![...document.scripts].some(s=>/openai|anthropic|gemini|ollama|qwen|gemma/i.test(s.textContent))
 }));
 
-if(base.selftest!=="SELFTEST: 26/26 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest+" | "+base.selftestFailures.join(" | ")+" | browserErrors: "+errors.join(" || "));
+if(!/^SELFTEST: (\d+)\/\1 verificações aprovadas\.$/.test(base.selftest||"")) throw new Error("Selftest falhou: "+base.selftest+" | "+base.selftestFailures.join(" | ")+" | browserErrors: "+errors.join(" || "));
 if(base.mobileTabs!==3||base.mobilePad!==3||base.sandbox!=="allow-scripts"||!base.dom||!base.noLlm) throw new Error("Estrutura básica inválida");
+if(!html.includes('referrerpolicy="no-referrer"')||html.includes('sandbox="allow-scripts allow-same-origin"')||!html.includes("e.source!==sandbox.contentWindow")) throw new Error("Hardening do Sandbox ausente");
 
 const runtimeTest=await page.evaluate(()=>new Promise(resolve=>{
   const timer=setTimeout(()=>resolve({ok:false,text:"",src:document.querySelector("#sandbox").src}),4000);
@@ -86,6 +87,18 @@ const runtimeTest=await page.evaluate(()=>new Promise(resolve=>{
 }));
 if(!runtimeTest.ok||!runtimeTest.src.startsWith("blob:")) throw new Error("JavaScript puro não foi executado no Sandbox");
 
+const blobCleanup=await page.evaluate(()=>{
+  const originalCreate=URL.createObjectURL,originalRevoke=URL.revokeObjectURL;
+  let created=0,revoked=0;
+  URL.createObjectURL=(blob)=>{created++;return originalCreate.call(URL,blob)};
+  URL.revokeObjectURL=(url)=>{if(String(url).startsWith("blob:"))revoked++;return originalRevoke.call(URL,url)};
+  window.DevAnabel.run('console.log("BLOB_1")');
+  window.DevAnabel.run('console.log("BLOB_2")');
+  URL.createObjectURL=originalCreate;URL.revokeObjectURL=originalRevoke;
+  return {created,revoked};
+});
+if(blobCleanup.created<2||blobCleanup.revoked<1) throw new Error("Blob URL antigo não foi revogado: "+JSON.stringify(blobCleanup));
+
 const pythonEditor=await page.evaluate(()=>{
   const e=document.querySelector("#editor");
   e.value="def soma(a, b):\n    return a + b\n\npri";
@@ -97,6 +110,23 @@ const pythonEditor=await page.evaluate(()=>{
   return {python:window.DevAnabel.intent("explique Python").type==="question",meta,suggestions:suggestionBox?.textContent||"",visible:suggestionBox?.classList.contains("show")};
 });
 if(!pythonEditor.python||!pythonEditor.meta.includes("PYTHON")||!pythonEditor.visible||!pythonEditor.suggestions.includes("print")) throw new Error("Autocomplete Python não foi inicializado corretamente");
+
+const editorUx=await page.evaluate(async()=>{
+  const e=document.querySelector("#editor");
+  e.value="linha1\\nlinha2\\nlinha3";
+  e.selectionStart=e.selectionEnd=e.value.length;
+  e.dispatchEvent(new Event("input",{bubbles:true}));
+  await new Promise(r=>setTimeout(r,350));
+  const lines=document.querySelector("#line-numbers")?.textContent||"";
+  e.scrollTop=20;
+  e.dispatchEvent(new Event("scroll",{bubbles:true}));
+  const synced=document.querySelector("#line-numbers")?.scrollTop===e.scrollTop;
+  e.value='const js = true;';
+  e.dispatchEvent(new Event("input",{bubbles:true}));
+  const hidden=!document.querySelector("#autocomplete")?.classList.contains("show");
+  return {lines,synced,hidden,stored:localStorage.getItem("dev-anabel-session-v2")};
+});
+if(editorUx.lines!=="1\\n2\\n3"||!editorUx.synced||!editorUx.hidden||!editorUx.stored) throw new Error("UX do editor ou persistência falhou: "+JSON.stringify(editorUx));
 
 const intent=await page.evaluate(()=>[
   window.DevAnabel.intent("analise meu codigo").type,

@@ -327,11 +327,11 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
 
   function arrows(code){
     let count=0;
-    const re=/(?:const\s+([A-Za-z_$][\w$]*)\s*=\s*)?function\s*\(([^)]*)\)\s*\{\s*return\s+([^;{}]+);?\s*\}/g;
+    const re=/(?:const\s+([A-Za-z_$][\w$]*)\s*=\s*)?function\s*\(([^)]*)\)\s*\{\s*return\s+([^;{}]+);?\s*\}\s*;?/g;
     const out=code.replace(re,(match,name,args,expr)=>{
       count++;
       const body="("+args.trim()+") => "+expr.trim();
-      return name?"const "+name+" = "+body:body;
+      return name?"const "+name+" = "+body+";":body+";";
     });
     return {code:out,count};
   }

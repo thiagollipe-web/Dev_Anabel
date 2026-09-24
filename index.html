@@ -123,7 +123,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       "ANABEL: conhecimento, regras, pesquisa e ferramentas ativas."
     ],
     sourceList:[],snapshots:[],ideas:[],selectedIdea:null,pendingAction:null,
-    autonomous:{enabled:true,lastQuery:"",lastReason:"",candidateCount:0,selected:"",score:0,lastAt:0},
+    autonomous:{enabled:true,lastQuery:"",lastReason:"",candidateCount:0,selected:"",score:0,lastAt:0,alternatives:[],plan:null},
     review:{issues:[],improvements:[],correctedCode:""}
   };
 
@@ -254,7 +254,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       }catch(e){console.error(e);log("ANABEL: falha ao ler "+file.name);}
     }
     switchTab(1);fileInput.value="";
-    const codeFile=attached.find(x=>/^(js|mjs|ts|tsx|jsx|py|java|c|cpp|cs)$/.test(x.ext));
+    const codeFile=attached.find(x=>/^(js|mjs|ts|tsx|jsx|py|java|c|cpp|cs|json)$/.test(x.ext));
     if(codeFile){
       clearTimeout(autonomousTimer);
       autonomousTimer=setTimeout(()=>autonomousFileTrigger(codeFile),180);
@@ -688,6 +688,41 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     };
   }
 
+  function documentationRefs(query){
+    const n=norm(query),docs=[];
+    if(/canvas|getcontext|drawimage|requestanimationframe/.test(n))docs.push({
+      kind:"DOCS",title:"MDN — Canvas 2D",
+      url:"https://developer.mozilla.org/pt-BR/docs/Web/API/CanvasRenderingContext2D",
+      note:"Documentação oficial da API Canvas 2D."
+    });
+    if(/fetch|http|rede|network|cors|cross.?origin/.test(n))docs.push({
+      kind:"DOCS",title:"MDN — Fetch API",
+      url:"https://developer.mozilla.org/pt-BR/docs/Web/API/Window/fetch",
+      note:"Documentação oficial da Fetch API."
+    });
+    if(/cors|cross.?origin/.test(n))docs.push({
+      kind:"DOCS",title:"MDN — CORS",
+      url:"https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Guides/CORS",
+      note:"Documentação oficial sobre CORS."
+    });
+    if(/dom|queryselector|event|touch|pointer/.test(n))docs.push({
+      kind:"DOCS",title:"MDN — DOM",
+      url:"https://developer.mozilla.org/pt-BR/docs/Web/API/Document_Object_Model",
+      note:"Documentação oficial do DOM."
+    });
+    if(/python|pyodide|django|flask|pandas|numpy/.test(n))docs.push({
+      kind:"DOCS",title:"Python — Documentação oficial",
+      url:"https://docs.python.org/pt-br/3/",
+      note:"Documentação oficial da linguagem Python."
+    });
+    if(/javascript|javascript|ecmascript|promise|async|await/.test(n))docs.push({
+      kind:"DOCS",title:"MDN — JavaScript",
+      url:"https://developer.mozilla.org/pt-BR/docs/Web/JavaScript",
+      note:"Documentação oficial de JavaScript."
+    });
+    return docs;
+  }
+
   async function documentationSearch(query){
     const q=String(query||"").trim();
     if(!q)return [];
@@ -723,6 +758,10 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     });
     documentationRefs(q).forEach(add);
     return out.slice(0,8);
+  }
+
+  function searchVariations(query){
+    return buildSearchPlan(query).terms;
   }
 
   async function searchSource(term,source){

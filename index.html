@@ -341,14 +341,15 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     return {code:out,count};
   }
 
-  function buildImprovements(m,result){
+  function buildImprovements(m,result,sourceCode=""){
+    const raw=String(sourceCode||"");
     const out=[];
     if(result.varCount)out.push("Substitua var por let/const conforme a necessidade de reatribuição e escopo.");
     if(result.logCount)out.push("Remova console.log de diagnóstico que não seja necessário no código final.");
     if(result.functionCount>result.arrowCount)out.push("Modernize funções simples com retorno direto para Arrow Functions quando isso preservar o comportamento.");
     if(result.fetchCount)out.push("Valide response.ok, trate erros de rede e considere CORS antes de consumir a resposta.");
     if(/\bawait\b/.test(m))out.push("Proteja operações assíncronas com try/catch e trate estados de carregamento/falha.");
-    if(/getContext\s*\(\s*["']2d["']\)/.test(m))out.push("Para jogos e animações Canvas, centralize requestAnimationFrame e considere devicePixelRatio.");
+    if(/getContext\s*\(\s*["']2d["']\)/.test(raw))out.push("Para jogos e animações Canvas, centralize requestAnimationFrame e considere devicePixelRatio.");
     if(/innerHTML\s*=/.test(m))out.push("Evite inserir HTML dinâmico sem necessidade; prefira textContent para texto simples.");
     if(/addEventListener\s*\(/.test(m))out.push("Centralize listeners repetidos e remova listeners que não tenham mais utilidade.");
     if(/touch|pointer|click/.test(m))out.push("Teste entrada por toque e mouse em diferentes tamanhos de tela.");
@@ -357,7 +358,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   }
 
   function renderReview({result,sourceCode,correctedCode=sourceCode,mode="análise"}){
-    const improvements=buildImprovements(mask(sourceCode),result);
+    const improvements=buildImprovements(mask(sourceCode),result,sourceCode);
     const issues=[];
     if(result.varCount)issues.push(result.varCount+" ocorrência(s) de var");
     if(result.logCount)issues.push(result.logCount+" console.log");

@@ -204,13 +204,13 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     const closeSeq="<"+"/script";
     const closeScript=closeSeq+">";
     const safeSource=source.split(closeSeq).join("<\\/script").split("</SCRIPT").join("<\\/SCRIPT");
-    const bootstrap='<script>(()=>{addEventListener("error",e=>parent.postMessage({source:"dev-anabel-runtime",type:"error",error:String(e.message||"erro no runtime")},"*"));addEventListener("unhandledrejection",e=>parent.postMessage({source:"dev-anabel-runtime",type:"error",error:String(e.reason||"Promise rejeitada")},"*"));const oldLog=console.log.bind(console);console.log=(...a)=>{oldLog(...a);parent.postMessage({source:"dev-anabel-runtime",type:"log",text:a.map(String).join(" ")},"*")};})()<\\/script>';
+    const bootstrap='<script>(()=>{addEventListener("error",e=>parent.postMessage({source:"dev-anabel-runtime",type:"error",error:String(e.message||"erro no runtime")},"*"));addEventListener("unhandledrejection",e=>parent.postMessage({source:"dev-anabel-runtime",type:"error",error:String(e.reason||"Promise rejeitada")},"*"));const oldLog=console.log.bind(console);console.log=(...a)=>{oldLog(...a);parent.postMessage({source:"dev-anabel-runtime",type:"log",text:a.map(String).join(" ")},"*")};})()'+closeScript;
     if(language==="css"){
       return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+bootstrap+'<style>'+source.replaceAll("</style","<\\/style").replaceAll("</STYLE","<\\/STYLE")+'</style></head><body><div id="app"></div></body></html>';
     }
     const module=/^\\s*(?:import|export)\\b/m.test(source);
     const scriptTag=module?'<script type="module">':'<script>';
-    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+bootstrap+'</head><body><div id="app"></div>'+scriptTag+safeSource+closeScript+</body></html>';
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+bootstrap+'</head><body><div id="app"></div>'+scriptTag+safeSource+closeScript+'</body></html>';
   }
   function run(code){
     if(!String(code||"").trim()){log("ANABEL: não há código para executar.");return false;}

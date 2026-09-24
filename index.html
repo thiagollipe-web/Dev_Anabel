@@ -1102,6 +1102,75 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     return {issues:[...new Set(issues)],suggestions:[...new Set(suggestions)]};
   }
 
+  // BASE DE CONHECIMENTO DE ERROS — Sintoma → Cura
+  const BUG_DATABASE=[
+    {
+      id:"VAR_OBSOLETE",
+      label:"Uso de 'var' (Obsoleto)",
+      pattern:/\bvar\b/,
+      symptom:code=>/\bvar\b/.test(mask(code)),
+      fix:code=>refactorVar(code).code,
+      tip:"Substituído 'var' por 'let' para reduzir problemas de escopo. Use 'const' quando não houver reatribuição."
+    },
+    {
+      id:"CONSOLE_LOG_DEBUG",
+      label:"Logs de Debug (Poluição)",
+      pattern:/console\.log\s*\(/,
+      symptom:code=>/console\.log\s*\(/.test(mask(code)),
+      fix:code=>removeLogs(code).code,
+      tip:"Removidos console.log usados como diagnóstico; preserve logs somente quando fizerem parte da funcionalidade."
+    },
+    {
+      id:"ASYNC_WITHOUT_TRY",
+      label:"Async sem Try/Catch",
+      pattern:/\bawait\b/,
+      symptom:code=>/\bawait\b/.test(mask(code))&&!/\btry\s*\{/.test(mask(code)),
+      fix:code=>{
+        const src=String(code||"");
+        const re=/^(\s*)(await\s+[^;\n]+;?)\s*$/gm;
+        let count=0;
+        const fixed=src.replace(re,(all,indent,statement)=>{
+          count++;
+          const clean=statement.trimEnd();
+          return indent+"try {\n"+indent+"  "+clean+"\n"+indent+"} catch (err) {\n"+indent+'  console.error("Erro capturado pela Anabel:", err);\n'+indent+"}";
+        });
+        return count?fixed:src;
+      },
+      tip:"Operações await simples foram protegidas com try/catch. Expressões await complexas exigem revisão contextual."
+    },
+    {
+      id:"FUNCTION_MODERNIZATION",
+      label:"Função Tradicional (Sugerida Arrow)",
+      pattern:/function\s*\(([^)]*)\)\s*\{\s*return\s+/,
+      symptom:code=>/function\s*\(.*\)\s*\{\s*return\s+.*\}/s.test(mask(code)),
+      fix:code=>arrows(code).code,
+      tip:"Função simples com retorno direto modernizada para Arrow Function."
+    },
+    {
+      id:"CANVAS_OPTIMIZATION",
+      label:"Canvas sem devicePixelRatio",
+      pattern:/getContext\s*\(\s*['"]2d['"]\s*\)/,
+      symptom:code=>/getContext\s*\(\s*['"]2d['"]\s*\)/.test(mask(code))&&!/\bdevicePixelRatio\b/.test(mask(code)),
+      fix:code=>{
+        const src=String(code||"");
+        if(/\bdevicePixelRatio\b/.test(mask(src)))return src;
+        const re=/^(\s*)(const|let|var)\s+ctx\s*=\s*canvas\.getContext\s*\(\s*(['"])2d\3\s*\)\s*;?\s*$/m;
+        if(!re.test(src))return src;
+        return src.replace(re,(all,indent,decl)=>{
+          return indent+"const dpr = window.devicePixelRatio || 1;\n"+
+            indent+"const rect = canvas.getBoundingClientRect();\n"+
+            indent+"if (rect.width > 0 && rect.height > 0) {\n"+
+            indent+"  canvas.width = Math.max(1, Math.round(rect.width * dpr));\n"+
+            indent+"  canvas.height = Math.max(1, Math.round(rect.height * dpr));\n"+
+            indent+"}\n"+
+            indent+decl+" ctx = canvas.getContext(\"2d\");\n"+
+            indent+"ctx.setTransform(dpr, 0, 0, dpr, 0, 0);";
+        });
+      },
+      tip:"Canvas ajustado para devicePixelRatio, melhorando a nitidez em telas de alta densidade."
+    }
+  ];
+
   function analyze(){
     const code=editor.value;
     if(!code.trim()){log("ANABEL: editor vazio.");return null;}
@@ -1158,6 +1227,98 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     log("ANABEL: veja também as ideias de melhoria no painel “Ideias de melhoria”.");
     switchTab(1);
     return {varCount:a.count,logCount:b.count,arrowCount:c.count,code};
+  }
+
+  function runDiagnostic(code){
+    const source=String(code||"");
+    return BUG_DATABASE.filter(bug=>{
+      try{return bug.pattern.test(source)&&bug.symptom(source);}
+      catch(e){return false;}
+    });
+  }
+
+  async function autoFixSystem(){
+    const originalCode=String(editor.value||"");
+    if(!originalCode.trim()){
+      log("ANABEL: editor vazio. Nada para corrigir.");
+      status.textContent="Auto-correção: editor vazio.";
+      return {changed:false,issues:[],passes:0,code:originalCode};
+    }
+
+    snapshot("antes do auto-conserto");
+    log("ANABEL: INICIANDO MOTOR DE DIAGNÓSTICO E AUTO-CORREÇÃO.");
+    let fixedCode=originalCode;
+    const applied=[];
+    const seenStates=new Set();
+    const MAX_PASSES=8;
+
+    for(let pass=1;pass<=MAX_PASSES;pass++){
+      const stateKey=fixedCode;
+      if(seenStates.has(stateKey))break;
+      seenStates.add(stateKey);
+      const issues=runDiagnostic(fixedCode);
+      if(!issues.length)break;
+
+      log("ANABEL: passagem "+pass+" → "+issues.length+" sintoma(s) conhecido(s).");
+      let changed=false;
+
+      for(let index=0;index<issues.length;index++){
+        const bug=issues[index];
+        log("["+(applied.length+1)+"] Consertando "+bug.label+"…");
+        const before=fixedCode;
+        try{
+          fixedCode=String(bug.fix(fixedCode)||fixedCode);
+        }catch(e){
+          fixedCode=before;
+          log("ANABEL: correção "+bug.id+" falhou com segurança → "+String(e.message||e));
+        }
+        if(fixedCode!==before){
+          changed=true;
+          applied.push({id:bug.id,label:bug.label,tip:bug.tip});
+          log("ANABEL: ✓ "+bug.id+" aplicado.");
+        }else{
+          log("ANABEL: ↳ "+bug.id+" não alterou o código; mantido para revisão contextual.");
+        }
+      }
+
+      if(!changed)break;
+    }
+
+    const remaining=runDiagnostic(fixedCode);
+    editor.value=fixedCode;
+    correctedOutput.value=fixedCode;
+    state.review={
+      issues:remaining.map(x=>x.label),
+      improvements:[...new Map(applied.map(x=>[x.id,x.tip])).values()],
+      correctedCode:fixedCode
+    };
+
+    if(reviewSummary){
+      reviewSummary.textContent=applied.length
+        ? "SISTEMA: "+applied.length+" correção(ões) automática(s) aplicada(s) com sucesso."
+        : "SISTEMA: nenhum conserto automático seguro foi aplicado.";
+    }
+    if(reviewList){
+      const items=applied.map(x=>x.tip);
+      if(remaining.length)items.push("Revisão manual necessária: "+remaining.map(x=>x.label).join(" · ")+".");
+      reviewList.innerHTML=[...new Set(items)].map(x=>"<li>"+esc(x)+"</li>").join("");
+    }
+
+    setLanguage(state.language==="auto"?"auto":state.language);
+    switchTab(1);
+
+    if(applied.length){
+      log("ANABEL: ciclo concluído → "+applied.length+" correção(ões) aplicada(s).");
+      applied.forEach((x,i)=>log("AUTO-FIX "+(i+1)+" → "+x.label));
+    }else{
+      log("ANABEL: nenhum defeito conhecido pôde ser corrigido automaticamente com segurança.");
+    }
+    if(remaining.length)log("ANABEL: ainda há "+remaining.length+" sintoma(s) para revisão contextual.");
+    status.textContent=remaining.length
+      ? "Auto-correção concluída · revisão manual necessária."
+      : "Auto-correção concluída · diagnóstico limpo.";
+
+    return {changed:fixedCode!==originalCode,issues:remaining,passes:seenStates.size,applied,code:fixedCode};
   }
 
   function fixCode(){
@@ -1364,7 +1525,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(i.type==="tip"){contextualTip();return;}
     if(i.type==="space"){editor.value=spaceGame();log("ANABEL: Space Invaders carregado no editor.");switchTab(1);return;}
     if(i.type==="analyze"){analyze();return;}
-    if(i.type==="fix"){fixCode();return;}
+    if(i.type==="fix"){await autoFixSystem();return;}
     if(i.type==="improve"){improvementIdeas();return;}
     if(i.type==="refactor"){refactor();return;}
     if(i.type==="url"){await loadUrl(i.value);return;}
@@ -1410,7 +1571,9 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     ideas,
     selectIdea,
     generate,
-    intent
+    intent,
+    runDiagnostic,
+    autoFixSystem
   };
 
   editor.addEventListener("input",()=>{if(state.language==="auto")setLanguage("auto");else setLanguage(state.language);if(detectLanguage(editor.value)==="python")renderAutocomplete(false);else autocomplete.classList.remove("show");});

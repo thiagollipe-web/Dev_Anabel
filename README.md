@@ -6,7 +6,11 @@ Bot retrô de desenvolvimento e aprendizado, sem LLM.
 
 - Terminal CRT em Canvas.
 - Editor de código.
+- Runtime Python resiliente: tenta distribuição local, Pyodide 314.0.7 e fallback 0.29.5; a versão 314.0.7 continua fixada por estabilidade.
+- Sessão local: código, linguagem e tema são salvos no `localStorage` e recuperados após recarga.
+- Editor com linhas numeradas sincronizadas com o `textarea`.
 - Sandbox isolado em iframe.
+- Sandbox endurecido: `allow-scripts` sem `allow-same-origin`, `referrerpolicy="no-referrer"` e validação da origem das mensagens.
 - Controles mobile via Pointer Events e postMessage.
 - Pesquisa online com referências.
 - Agente autônomo: analisa o objetivo, gera até 4 estratégias de busca, consulta GitHub + Stack Overflow + documentação em paralelo, lê candidatos e seleciona código por heurística de relevância, completude, modernidade e segurança.
@@ -24,6 +28,7 @@ Bot retrô de desenvolvimento e aprendizado, sem LLM.
 - Anexação de arquivos textuais por seleção ou arrastar e soltar.
 - Importação de URLs, incluindo links GitHub blob convertidos para raw.
 - Exportação de código.
+- Redimensionamento do terminal com debounce de 200 ms.
 - Tema CRT verde e âmbar.
 
 ## Comandos

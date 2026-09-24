@@ -1247,9 +1247,18 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     }
   ];
 
-  function analyze(){
+  async function analyze(){
     const code=editor.value;
     if(!code.trim()){log("ANABEL: editor vazio.");return null;}
+    // A IA remota atua como copiloto da análise: ela revisa o código e orienta a Anabel,
+    // enquanto as regras locais continuam responsáveis pelas correções determinísticas.
+    try{
+      const aiPrompt="Atue como copiloto técnico da Anabel. Analise o código abaixo em português do Brasil. Identifique bugs, riscos, problemas de arquitetura, segurança, desempenho e melhorias práticas. Não reescreva o arquivo inteiro; entregue uma revisão objetiva em tópicos e priorize problemas concretos.\n\nCódigo:\n"+code.slice(0,12000);
+      await callRemoteAssistant(aiPrompt);
+      log("ANABEL: IA entrou como copiloto da análise; as correções locais continuam disponíveis.");
+    }catch(e){
+      log("ANABEL: copiloto de IA indisponível nesta análise; mantendo diagnóstico local.");
+    }
     if((state.language==="python"||detectLanguage(code)==="python")){
       const py=analyzePython(code);
       log("PROFESSOR PYTHON: análise concluída.");
@@ -1296,7 +1305,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(a.count){addSource({kind:"REF",title:"MDN — let",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/let",note:"Justificativa para let."});log("DICA: use const quando o valor não for reatribuído.");}
     if(b.count)addSource({kind:"REF",title:"MDN — console.log()",url:"https://developer.mozilla.org/docs/Web/API/console/log_static",note:"Referência da Console API."});
     if(c.count)addSource({kind:"REF",title:"MDN — Arrow functions",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Functions/Arrow_functions",note:"A Anabel transforma apenas funções simples com retorno direto."});
-    const after=analyze();
+    const after=await analyze();
     renderReview({result:after,sourceCode:code,correctedCode:code,mode:"correção"});
     correctedOutput.value=code;
     log("ANABEL: código corrigido foi colocado no Editor e no painel “Código corrigido”.");
@@ -1621,7 +1630,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(i.type==="run"){run(editor.value);return;}
     if(i.type==="tip"){contextualTip();return;}
     if(i.type==="space"){editor.value=spaceGame();log("ANABEL: Space Invaders carregado no editor.");switchTab(1);return;}
-    if(i.type==="analyze"){analyze();return;}
+    if(i.type==="analyze"){await analyze();return;}
     if(i.type==="fix"){await autoFixSystem();return;}
     if(i.type==="improve"){improvementIdeas();return;}
     if(i.type==="refactor"){refactor();return;}

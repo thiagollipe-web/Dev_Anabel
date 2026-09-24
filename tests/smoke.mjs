@@ -97,6 +97,23 @@ const runtimeTest=await page.evaluate(()=>new Promise(resolve=>{
   window.DevAnabel.run('console.log("EXEC_OK");');
 }));
 if(!runtimeTest.ok||!runtimeTest.src.startsWith("blob:")) throw new Error("JavaScript puro não foi executado no Sandbox");
+const mainExecuteButton=await page.evaluate(()=>{
+  const e=document.querySelector("#editor");
+  e.value='console.log("MAIN_BUTTON_OK");';
+  e.dispatchEvent(new Event("input",{bubbles:true}));
+  document.querySelector("#input").value="";
+  document.querySelector("#send").click();
+  return true;
+});
+await page.waitForTimeout(150);
+const mainExecute=await page.evaluate(()=>({
+  src:document.querySelector("#sandbox").src,
+  history:window.DevAnabel.state.history.slice(-3)
+}));
+if(!mainExecute.src.startsWith("blob:")||!mainExecute.history.some(x=>x.includes("execução direta do código do editor"))) {
+  throw new Error("Botão principal EXECUTAR não executou o código do editor: "+JSON.stringify(mainExecute));
+}
+
 
 const blobCleanup=await page.evaluate(()=>{
   const originalCreate=URL.createObjectURL,originalRevoke=URL.revokeObjectURL;

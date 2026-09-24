@@ -239,14 +239,26 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     state.sourceList.push({kind:s.kind||"WEB",title:s.title||s.url,url:s.url,note:s.note||""});renderSources();
   }
   async function handleFiles(files){
+    const attached=[];
     for(const file of [...(files||[])]){
       const ext=(file.name.split(".").pop()||"").toLowerCase();
       const allowed=["html","htm","js","mjs","css","json","txt","md","xml","svg","csv","py","java","c","cpp","h","hpp","cs","ts","tsx","jsx"];
       if(!allowed.includes(ext)){log("ANABEL: formato não suportado → "+file.name);continue;}
-      try{snapshot("antes de anexar "+file.name);editor.value=await file.text();state.language=ext==="py"?"python":"auto";setLanguage(state.language);log("SISTEMA: arquivo anexado → "+file.name);}
-      catch(e){console.error(e);log("ANABEL: falha ao ler "+file.name);}
+      try{
+        snapshot("antes de anexar "+file.name);
+        editor.value=await file.text();
+        state.language=ext==="py"?"python":"auto";
+        setLanguage(state.language);
+        attached.push({name:file.name,ext,code:editor.value});
+        log("SISTEMA: arquivo anexado → "+file.name);
+      }catch(e){console.error(e);log("ANABEL: falha ao ler "+file.name);}
     }
     switchTab(1);fileInput.value="";
+    const codeFile=attached.find(x=>/^(js|mjs|ts|tsx|jsx|py|java|c|cpp|cs)$/.test(x.ext));
+    if(codeFile){
+      clearTimeout(autonomousTimer);
+      autonomousTimer=setTimeout(()=>autonomousFileTrigger(codeFile),180);
+    }
   }
   function isCodeUrl(url){
     return /\.(?:js|mjs|css|py|ts|tsx|jsx|json|html|htm|xml|svg|c|cpp|h|hpp|cs)(?:[?#].*)?$/i.test(String(url||""));
@@ -740,14 +752,17 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     const code=String(file?.code||editor.value||"");
     if(!code.trim())return;
     const lang=detectLanguage(code);
+    const analysis=analyze();
     let reason="";
     if(lang==="javascript"||lang==="typescript"){
       try{new Function(code);}catch(e){reason=String(e.message||e);}
     }
-    if(!reason&&/\b(var|console\.log)\b/.test(mask(code)))reason="padrões de código que merecem revisão";
+    if(!reason&&analysis?.varCount)reason="uso de var detectado";
+    if(!reason&&analysis?.logCount)reason="console.log detectado";
+    if(!reason&&analysis?.pythonIssues?.length)reason=analysis.pythonIssues[0];
+    if(!reason&&analysis?.pythonSuggestions?.length)reason=analysis.pythonSuggestions[0];
     if(!reason)return;
     log("ANABEL: GATILHO AUTÔNOMO detectou → "+reason);
-    analyze();
     await autonomousSearch(inferSearchTopic(code,reason),"arquivo "+String(file?.name||"anexado"));
   }
 

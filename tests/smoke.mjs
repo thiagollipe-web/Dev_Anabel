@@ -19,7 +19,7 @@ const routes=[
   {
     pattern:"https://pt.wikipedia.org/**",
     contentType:"application/json",
-    body:{pages:[{title:"Canvas",key:"Canvas",description:"Área de desenho do navegador",content_urls:{desktop:{page:"https://pt.wikipedia.org/wiki/Canvas"}}}]}
+    body:{pages:[{title:"Canvas",key:"Canvas",description:"This function is a reusable block of code.",content_urls:{desktop:{page:"https://pt.wikipedia.org/wiki/Canvas"}}}]}
   },
   {
     pattern:"https://api.stackexchange.com/**",

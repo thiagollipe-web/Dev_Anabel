@@ -294,6 +294,17 @@ const mobile=await page.evaluate(()=>{
   return getComputedStyle(p).display;
 });
 if(mobile!=="flex") throw new Error("Layout mobile falhou");
+await page.reload();
+await page.waitForTimeout(150);
+const restored=await page.evaluate(()=>({
+  value:document.querySelector("#editor").value,
+  status:document.querySelector("#status")?.textContent||"",
+  lines:document.querySelector("#line-numbers")?.textContent||""
+}));
+if(restored.value!=="const js = true;"||!restored.status.includes("Sessão anterior recuperada")||restored.lines!=="1") {
+  throw new Error("Persistência após F5 falhou: "+JSON.stringify(restored));
+}
+
 
 if(errors.length) throw new Error(errors.join("\n"));
 

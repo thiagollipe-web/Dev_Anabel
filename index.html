@@ -1519,7 +1519,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     return false;
   }
 
-  const AI_ENDPOINT=localStorage.getItem("anabel-api-endpoint") || (location.hostname.endsWith(".vercel.app") ? "/api/gemini" : "https://dev-anabel.vercel.app/api/gemini");
+  const AI_ENDPOINT=location.hostname.endsWith(".vercel.app") ? "/api/gemini" : "https://dev-anabel.vercel.app/api/gemini";
 
   async function callRemoteAssistant(query){
     const history=state.history.slice(-12).map((line,i)=>({role:i%2===0?"user":"model",parts:[{text:String(line)}]}));
@@ -1532,8 +1532,10 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       status.textContent="IA remota ativa: "+String(data.provider||"remota");
       return true;
     }catch(error){
-      log("ANABEL: Ollama, Gemini e Groq indisponíveis; usando motor local.");
-      status.textContent="Motor local ativo.";
+      const detail=error instanceof Error ? error.message : String(error || "erro desconhecido");
+      log("ANABEL: gateway remoto indisponível: "+detail);
+      log("ANABEL: endpoint utilizado: "+AI_ENDPOINT);
+      status.textContent="Gateway remoto indisponível; motor local ativo.";
       return false;
     }
   }

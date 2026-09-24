@@ -1054,7 +1054,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     const code=String(file?.code||editor.value||"");
     if(!code.trim()||state.autonomous.enabled===false)return;
     const lang=detectLanguage(code);
-    const analysis=analyze();
+    const analysis=await analyze();
     let reason="";
     if(String(file?.ext||"").toLowerCase()==="json"){
       try{JSON.parse(code);}catch(e){reason="JSON inválido: "+String(e.message||e);}
@@ -1293,7 +1293,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     return result;
   }
 
-  function refactor(){
+  async function refactor(){
     if(!editor.value.trim()){log("ANABEL: editor vazio.");return null;}
     snapshot("antes da refatoração");
     let code=editor.value;
@@ -1633,7 +1633,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(i.type==="analyze"){await analyze();return;}
     if(i.type==="fix"){await autoFixSystem();return;}
     if(i.type==="improve"){improvementIdeas();return;}
-    if(i.type==="refactor"){refactor();return;}
+    if(i.type==="refactor"){await refactor();return;}
     if(i.type==="url"){await loadUrl(i.value);return;}
     if(i.type==="autonomousSearch"){await autonomousSearch(i.value,"comando autônomo do usuário");return;}
     if(i.type==="researchCode"){await researchCode(i.value);return;}

@@ -4,7 +4,7 @@ import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.
 
 const config = window.ANABEL_FIREBASE_CONFIG || {};
 const siteKey = String(window.ANABEL_FIREBASE_APPCHECK_SITE_KEY || "").trim();
-const modelName = String(window.ANABEL_FIREBASE_MODEL || "gemini-2.5-flash").trim();
+const modelName = String(window.ANABEL_FIREBASE_MODEL || "gemini-3.7-flash").trim();
 
 function hasConfig(value) {
   return ["apiKey","authDomain","projectId","storageBucket","messagingSenderId","appId"]

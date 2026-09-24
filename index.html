@@ -1124,6 +1124,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(/\b(?:procure|encontre|busque|ache|pesquise|pesquisar)\b/.test(n)&&/\b(?:codigo|código|script|exemplo|implementacao|implementação)\b/.test(n))return {type:"autonomousSearch",value:text.replace(/\b(?:procure|encontre|busque|ache|pesquise|pesquisar)\b/gi,"").replace(/\b(?:me\s+)?(?:de|dê|traga|entregue|entregar)\b/gi,"").replace(/\b(?:codigo|código)\b/gi,"").trim()};
     if(/\b(?:pesquise|pesquisa|pesquisar|busque|buscar|procure|na internet|na rede)\b/.test(n)&&/\b(?:codigo|código|script|exemplo|implemente|implementacao|implementação)\b/.test(n))return {type:"researchCode",value:text.replace(/\b(?:pesquise|pesquisa|pesquisar|busque|buscar|procure|na internet|na rede)\b/gi,"").replace(/\b(?:me\s+)?(?:de|dê|traga|entregue|entregar)\b/gi,"").replace(/\b(?:codigo|código)\b/gi,"").trim()};
     if(/^\/?(pesquisar|pesquisa|buscar|busca)(\s|$)/.test(n)||/\b(busque|buscar|pesquise|pesquisar|procure|na rede|na internet)\b/.test(n))return {type:"research",value:text.replace(/\b(busque|buscar|pesquise|pesquisa|pesquisar|procure|na rede|na internet)\b/gi,"").trim()};
+    if(/\b(?:c[oó]digo|script|implementa[cç][aã]o|exemplo)\b/.test(n)&&/\b(?:como|criar|fazer|faca|faça|usar|implementar|exemplo|gera|gerar|preciso|quero|me d[eê]|me entregue)\b/.test(n))return {type:"researchCode",value:text};
     if(/\b(o que e|o que é|como funciona|como faco|como faço|como criar|como usar|explique|explica|por que|por quê|qual a melhor maneira)\b/.test(n))return {type:"question",value:text};
     if(/\b(crie|criar|gere|gerar|faça|faca|desenvolva|codifique|entregue|me de|me dê|me entregue)\b.*\b(jogo|game|codigo|código|prototipo|protótipo)\b/.test(n))return {type:"generate"};
     return {type:"fallback",value:text};
@@ -1182,7 +1183,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(i.type==="question"){await smartAnswer(i.value);return;}
     if(i.type==="ideas"){await ideas(i.value||"jogo estratégia 8-bit");return;}
     if(i.type==="select"){selectIdea(i.value);return;}
-    if(i.type==="generate"){generate();return;}
+    if(i.type==="generate"){if(state.selectedIdea)generate();else await autonomousSearch(i.value||text,"pedido de código sem ideia selecionada");return;}
 
     const item=known(i.value);
     if(item){await smartAnswer(i.value);return;}
@@ -1266,6 +1267,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       ["Extrator de código",extractCodeBlocks("```js\nconst x=1;\nconsole.log(x);\n```").length===1],
       ["Leitor web",typeof readWebPage==="function"],
       ["Loop autônomo",typeof autonomousSearch==="function"&&searchVariations("canvas").length===4],
+      ["Código natural",intent("quero o código de um botão javascript").type==="researchCode"],
       ["Qualidade autônoma",codeQualityScore("function x(){try{return 1}catch(e){throw e}}","javascript").score>0],
       ["Intent: Space Invaders",intent("crie space invaders").type==="space"],
       ["Intent: aprovação",intent("sim").type==="confirm"],

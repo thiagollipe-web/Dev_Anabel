@@ -64,7 +64,7 @@ const base=await page.evaluate(()=>({
   noLlm:![...document.scripts].some(s=>/openai|anthropic|gemini|ollama|qwen|gemma/i.test(s.textContent))
 }));
 
-if(base.selftest!=="SELFTEST: 19/19 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest);
+if(base.selftest!=="SELFTEST: 20/20 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest);
 if(base.mobileTabs!==3||base.mobilePad!==3||base.sandbox!=="allow-scripts"||!base.dom||!base.noLlm) throw new Error("Estrutura básica inválida");
 
 const runtimeTest=await page.evaluate(async()=>{

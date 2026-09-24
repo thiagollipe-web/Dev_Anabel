@@ -8,7 +8,7 @@ const html=readFileSync(file,"utf8");
 if(!html.includes("window.DevAnabel")) throw new Error("DevAnabel global ausente");
 if(!html.includes('sandbox="allow-scripts"')) throw new Error("Sandbox ausente");
 if(!html.includes('id="review"')||!html.includes('id="corrected-output"')) throw new Error("Painel de revisão ausente");
-if(/openai|anthropic|gemini|ollama|qwen|gemma/i.test(html)) throw new Error("Dependência de LLM detectada");
+if(/AIza[0-9A-Za-z_-]{20,}|gsk_[0-9A-Za-z_-]{20,}/i.test(html)) throw new Error("Chave de API exposta no frontend");
 
 const browser=await chromium.launch({headless:true,channel:"chrome"});
 const page=await browser.newPage({viewport:{width:1280,height:900}});
@@ -43,6 +43,11 @@ const routes=[
     body:"# Tutorial\n\n```javascript\nconst resultado = 99;\nconsole.log(resultado);\n```"
   },
   {
+    pattern:"https://dev-anabel.vercel.app/api/gemini",
+    contentType:"application/json",
+    body:{text:"Resposta remota de teste",provider:"gemini",model:"gemini-2.5-flash"}
+  },
+  {
     pattern:"https://api.mymemory.translated.net/**",
     contentType:"application/json",
     body:{responseData:{translatedText:"Uma função é um bloco reutilizável de código."}}
@@ -67,12 +72,18 @@ const base=await page.evaluate(()=>({
   mobileTabs:document.querySelectorAll(".tab").length,
   mobilePad:document.querySelectorAll(".pad").length,
   sandbox:document.querySelector("#sandbox").getAttribute("sandbox"),
-  noLlm:![...document.scripts].some(s=>/openai|anthropic|gemini|ollama|qwen|gemma/i.test(s.textContent))
+  noLiteralSecrets:![...document.scripts].some(s=>/AIza[0-9A-Za-z_-]{20,}|gsk_[0-9A-Za-z_-]{20,}/i.test(s.textContent))
 }));
 
 if(!/^SELFTEST: (\d+)\/\1 verificações aprovadas\.$/.test(base.selftest||"")) throw new Error("Selftest falhou: "+base.selftest+" | "+base.selftestFailures.join(" | ")+" | browserErrors: "+errors.join(" || "));
-if(base.mobileTabs!==3||base.mobilePad!==3||base.sandbox!=="allow-scripts"||!base.dom||!base.noLlm) throw new Error("Estrutura básica inválida");
+if(base.mobileTabs!==3||base.mobilePad!==3||base.sandbox!=="allow-scripts"||!base.dom||!base.noLiteralSecrets) throw new Error("Estrutura básica inválida");
 if(!html.includes('referrerpolicy="no-referrer"')||html.includes('sandbox="allow-scripts allow-same-origin"')||!html.includes("e.source!==sandbox.contentWindow")) throw new Error("Hardening do Sandbox ausente");
+
+const aiSmoke=await page.evaluate(async()=>{
+  await window.DevAnabel.answer("teste remoto da inteligência artificial");
+  return window.DevAnabel.state.history.slice(-4);
+});
+if(!aiSmoke.some(x=>x.includes("ANABEL [GEMINI]: Resposta remota de teste"))) throw new Error("Gateway Gemini/Groq não foi chamado pelo frontend: "+JSON.stringify(aiSmoke));
 
 const runtimeTest=await page.evaluate(()=>new Promise(resolve=>{
   const timer=setTimeout(()=>resolve({ok:false,text:"",src:document.querySelector("#sandbox").src}),4000);

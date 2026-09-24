@@ -391,7 +391,13 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     const d=e.data;if(!d)return;
     if(d.source==="dev-anabel-runtime"){
       if(d.type==="log")log("RUNTIME: "+String(d.text||""));
-      if(d.type==="error"){status.textContent="Erro no código executado.";log("ERRO DE EXECUÇÃO: "+String(d.error||"falha desconhecida"));}
+      if(d.type==="error"){
+        const runtimeError=String(d.error||"falha desconhecida");
+        status.textContent="Erro no código executado.";
+        log("ERRO DE EXECUÇÃO: "+runtimeError);
+        clearTimeout(autonomousTimer);
+        autonomousTimer=setTimeout(()=>autonomousSearch(inferSearchTopic(editor.value,runtimeError),"erro detectado automaticamente"),250);
+      }
       return;
     }
     if(d.source!=="dev-anabel-python")return;
@@ -633,34 +639,120 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     return found.slice(0,10);
   }
 
-  async function researchCode(query){
+  function codeQualityScore(code,language){
+    const s=String(code||"");
+    const m=mask(s);
+    let score=Math.min(25,Math.floor(s.length/80));
+    const reasons=[];
+    if(s.length>=160){score+=8;reasons.push("completude");}
+    if(/function\s+\w+|=>|\bdef\s+\w+/.test(m)){score+=10;reasons.push("estrutura modular");}
+    if(/try\s*\{|try:|catch\s*\(|response\.ok|throw\s+/.test(m)){score+=8;reasons.push("tratamento de erros");}
+    if(/addEventListener|requestAnimationFrame|async\s+|await\s+/.test(m)){score+=6;reasons.push("eventos/fluxo assíncrono");}
+    if(/\bconst\b|\blet\b|===|!==/.test(m)){score+=5;reasons.push("sintaxe moderna");}
+    if(/aria-|textContent\s*=|createElement\(/.test(m)){score+=4;reasons.push("integração DOM");}
+    if(/getContext\(|canvas|fillRect|drawImage/.test(m)){score+=4;reasons.push("Canvas");}
+    if(/\/\*|\/\/|#\s|'''|"""/.test(s)){score+=3;reasons.push("documentação");}
+    if(/eval\(|new\s+Function\(|document\.write\(/.test(m)){score-=12;reasons.push("padrão inseguro/legado");}
+    if(/\bvar\b|console\.log\s*\(/.test(m)){score-=3;reasons.push("debug/legado");}
+    if(language==="python"&&/import\s+(requests|numpy|pandas|pygame)/.test(m)){score+=3;reasons.push("biblioteca Python");}
+    return {score,reasons:[...new Set(reasons)]};
+  }
+  function searchVariations(query){
+    const q=String(query||"").trim().replace(/\s+/g," ");
+    return [...new Set([q,q+" example code",q+" github repository",q+" implementation javascript"])].filter(Boolean).slice(0,4);
+  }
+  function inferSearchTopic(code,reason){
+    const n=norm(String(code||"")+" "+String(reason||""));
+    if(/cors|cross.?origin/.test(n))return "JavaScript CORS error solution";
+    if(/failed to fetch|fetch|network/.test(n))return "JavaScript fetch error handling";
+    if(/canvas|getcontext|requestanimationframe/.test(n))return "JavaScript Canvas game example";
+    if(/pyodide|python/.test(n))return "Python browser Pyodide example";
+    if(/dom|queryselector|eventlistener|touch/.test(n))return "JavaScript DOM events example";
+    if(/syntaxerror|unexpected token|referenceerror|typeerror/.test(n))return "JavaScript runtime error solution";
+    if(/game|jogo|sprite|player|enemy|score/.test(n))return "JavaScript 2D game implementation";
+    return "JavaScript implementation example";
+  }
+  async function autonomousSearch(query,reason="objetivo do usuário"){
     const q=String(query||"").trim();
-    if(!q){log("ANABEL: diga o que o código deve fazer.");return false;}
-    log("ANABEL: modo PESQUISA + CÓDIGO ativado.");
-    const found=await research(q);
-    let candidates=[];
-    for(const item of found.slice(0,5)){
-      try{
-        if(item.kind==="GITHUB")candidates.push(...await readGithubRepoCode(item.url));
-        const page=await readWebPage(item.url,{timeout:14000});
-        extractCodeBlocks(page.text,item.url).forEach((b,idx)=>candidates.push({
-          title:item.title+(idx?" · bloco "+(idx+1):""),
-          url:item.url,
-          code:b.code,
-          language:guessCodeLanguage(b.code,item.url,b.language)
-        }));
-      }catch(e){}
+    if(!q||autonomousBusy)return false;
+    const key=norm(q)+"|"+norm(reason);
+    if(state.autonomousLastKey===key&&Date.now()-state.autonomous.lastAt<15000)return false;
+    autonomousBusy=true;
+    state.autonomousLastKey=key;
+    state.autonomous.lastAt=Date.now();
+    state.autonomous.lastQuery=q;
+    state.autonomous.lastReason=reason;
+    status.textContent="AGENTE AUTÔNOMO: pesquisando…";
+    log("ANABEL: INICIANDO MODO AUTÔNOMO.");
+    log("ANABEL: objetivo → "+q);
+    const terms=searchVariations(q);
+    try{
+      log("ANABEL: "+terms.length+" estratégias de busca em paralelo.");
+      const batches=await Promise.allSettled(terms.map(term=>research(term)));
+      const refs=[],seen=new Set();
+      batches.forEach(r=>{
+        if(r.status!=="fulfilled")return;
+        (r.value||[]).forEach(ref=>{
+          if(ref?.url&&!seen.has(ref.url)){seen.add(ref.url);refs.push(ref);}
+        });
+      });
+      log("ANABEL: "+refs.length+" referências distintas para leitura.");
+      const pages=await Promise.allSettled(refs.slice(0,16).map(async ref=>{
+        const out=[];
+        if(ref.kind==="GITHUB"){
+          try{out.push(...await readGithubRepoCode(ref.url));}catch(e){}
+        }
+        try{
+          const page=await readWebPage(ref.url,{timeout:14000});
+          extractCodeBlocks(page.text,ref.url).forEach((b,i)=>{
+            const language=guessCodeLanguage(b.code,ref.url,b.language);
+            const ql=codeQualityScore(b.code,language);
+            out.push({title:ref.title+(i?" · bloco "+(i+1):""),url:ref.url,code:b.code,language,score:ql.score,reasons:ql.reasons});
+          });
+        }catch(e){}
+        return out;
+      }));
+      const candidates=[];
+      pages.forEach(r=>{if(r.status==="fulfilled")candidates.push(...r.value);});
+      const unique=candidates.filter((x,i,a)=>x.code&&a.findIndex(y=>y.code===x.code)===i);
+      unique.sort((a,b)=>b.score-a.score||b.code.length-a.code.length);
+      state.autonomous.candidateCount=unique.length;
+      if(!unique.length){
+        log("ANABEL: consultei várias fontes, mas nenhum código pôde ser extraído.");
+        status.textContent="Agente: nenhum código extraível.";
+        return false;
+      }
+      const best=unique[0];
+      state.autonomous.selected=best.title;
+      state.autonomous.score=best.score;
+      deliverCode(best.code,best.language,best.title,best.url);
+      log("ANABEL: comparei "+unique.length+" candidatos.");
+      log("ANABEL: selecionei → "+best.title);
+      log("ANABEL: motivo → "+(best.reasons.length?best.reasons.join(", "):"completude estrutural")+" · score "+best.score);
+      log("ANABEL: código entregue diretamente no editor.");
+      status.textContent="Agente autônomo concluiu a pesquisa.";
+      return true;
+    }finally{
+      autonomousBusy=false;
     }
-    candidates=candidates.filter((x,i,a)=>x.code&&a.findIndex(y=>y.code===x.code)===i);
-    candidates.sort((x,y)=>y.code.length-x.code.length);
-    if(!candidates.length){
-      log("ANABEL: encontrei referências, mas nenhuma continha código extraível.");
-      return false;
+  }
+  async function autonomousFileTrigger(file){
+    const code=String(file?.code||editor.value||"");
+    if(!code.trim())return;
+    const lang=detectLanguage(code);
+    let reason="";
+    if(lang==="javascript"||lang==="typescript"){
+      try{new Function(code);}catch(e){reason=String(e.message||e);}
     }
-    const best=candidates[0];
-    deliverCode(best.code,best.language,best.title,best.url);
-    log("ANABEL: código extraído da página pesquisada; não entreguei somente o link.");
-    return true;
+    if(!reason&&/\b(var|console\.log)\b/.test(mask(code)))reason="padrões de código que merecem revisão";
+    if(!reason)return;
+    log("ANABEL: GATILHO AUTÔNOMO detectou → "+reason);
+    analyze();
+    await autonomousSearch(inferSearchTopic(code,reason),"arquivo "+String(file?.name||"anexado"));
+  }
+
+  async function researchCode(query){
+    return await autonomousSearch(query,"pedido de código pesquisado");
   }
 
   function simple(text){
@@ -975,6 +1067,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     const select=n.match(/\b(?:ideia|opcao|opção)\s*([1-5])\b/)||n.match(/\b(?:gostei|escolho|quero)\b.*\b([1-5])\b/);
     if(select)return {type:"select",value:Number(select[1])};
     if(/^\/?ideias?(\s|$)/.test(n)||/\b(dica|sugestao|sugestão)\b.*\b(jogo|game)\b/.test(n))return {type:"ideas",value:n.replace(/^\/?ideias?\s*/,"")};
+    if(/\b(?:procure|encontre|busque|ache|pesquise|pesquisar)\b/.test(n)&&/\b(?:codigo|código|script|exemplo|implementacao|implementação)\b/.test(n))return {type:"autonomousSearch",value:text.replace(/\b(?:procure|encontre|busque|ache|pesquise|pesquisar)\b/gi,"").replace(/\b(?:me\s+)?(?:de|dê|traga|entregue|entregar)\b/gi,"").replace(/\b(?:codigo|código)\b/gi,"").trim()};
     if(/\b(?:pesquise|pesquisa|pesquisar|busque|buscar|procure|na internet|na rede)\b/.test(n)&&/\b(?:codigo|código|script|exemplo|implemente|implementacao|implementação)\b/.test(n))return {type:"researchCode",value:text.replace(/\b(?:pesquise|pesquisa|pesquisar|busque|buscar|procure|na internet|na rede)\b/gi,"").replace(/\b(?:me\s+)?(?:de|dê|traga|entregue|entregar)\b/gi,"").replace(/\b(?:codigo|código)\b/gi,"").trim()};
     if(/^\/?(pesquisar|pesquisa|buscar|busca)(\s|$)/.test(n)||/\b(busque|buscar|pesquise|pesquisar|procure|na rede|na internet)\b/.test(n))return {type:"research",value:text.replace(/\b(busque|buscar|pesquise|pesquisa|pesquisar|procure|na rede|na internet)\b/gi,"").trim()};
     if(/\b(o que e|o que é|como funciona|como faco|como faço|como criar|como usar|explique|explica|por que|por quê|qual a melhor maneira)\b/.test(n))return {type:"question",value:text};
@@ -1029,6 +1122,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(i.type==="improve"){improvementIdeas();return;}
     if(i.type==="refactor"){refactor();return;}
     if(i.type==="url"){await loadUrl(i.value);return;}
+    if(i.type==="autonomousSearch"){await autonomousSearch(i.value,"comando autônomo do usuário");return;}
     if(i.type==="researchCode"){await researchCode(i.value);return;}
     if(i.type==="research"){await research(i.value);return;}
     if(i.type==="question"){await smartAnswer(i.value);return;}
@@ -1063,6 +1157,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     handleFiles,
     research,
     researchCode,
+    autonomousSearch,
     answer:smartAnswer,
     analyze,
     refactor,
@@ -1116,6 +1211,8 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       ["Intent: pesquisa + código",intent("/pesquisar codigo canvas").type==="researchCode"],
       ["Extrator de código",extractCodeBlocks("```js\nconst x=1;\nconsole.log(x);\n```").length===1],
       ["Leitor web",typeof readWebPage==="function"],
+      ["Loop autônomo",typeof autonomousSearch==="function"&&searchVariations("canvas").length===4],
+      ["Qualidade autônoma",codeQualityScore("function x(){try{return 1}catch(e){throw e}}","javascript").score>0],
       ["Intent: Space Invaders",intent("crie space invaders").type==="space"],
       ["Intent: aprovação",intent("sim").type==="confirm"],
       ["Intent: URL",intent("https://example.com/test.html").type==="url"],

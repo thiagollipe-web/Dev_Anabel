@@ -201,6 +201,91 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   window.addEventListener("beforeunload",revokeSandbox);
   draw();
 
+
+  const KB=[
+    {keys:["fetch","fetch javascript"],title:"fetch()",text:"fetch() faz uma requisição de rede e devolve uma Promise com a resposta.",example:"const resposta=await fetch(url);",tip:"Verifique response.ok e trate falhas de rede e CORS.",url:"https://developer.mozilla.org/docs/Web/API/Window/fetch",source:"MDN — Fetch API"},
+    {keys:["async await","async/await"],title:"async/await",text:"async/await torna mais legível o código que espera resultados assíncronos. await espera uma Promise dentro de uma função async.",example:"async function carregar(){ const r=await fetch(url); }",tip:"Use try/catch para tratar falhas.",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/async_function",source:"MDN — async function"},
+    {keys:["array","vetor"],title:"Array",text:"Array é uma lista ordenada. A primeira posição é 0.",example:"const frutas=['maçã','uva'];",tip:"map(), filter() e find() são úteis para transformar e pesquisar listas.",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array",source:"MDN — Array"},
+    {keys:["promise","promises"],title:"Promise",text:"Promise representa uma operação cujo resultado pode chegar depois.",example:"fetch(url).then(r=>r.json());",tip:"async/await costuma facilitar a leitura.",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise",source:"MDN — Promise"},
+    {keys:["canvas","canvas api"],title:"Canvas 2D",text:"Canvas é uma área de desenho controlada por JavaScript. É útil para jogos e visualizações.",example:"const ctx=canvas.getContext('2d');",tip:"Para animações, prefira requestAnimationFrame.",url:"https://developer.mozilla.org/docs/Web/API/CanvasRenderingContext2D",source:"MDN — CanvasRenderingContext2D"},
+    {keys:["dom","document object model"],title:"DOM",text:"DOM é a representação dos elementos HTML que o JavaScript pode ler e alterar.",example:"document.querySelector('h1').textContent='Olá';",tip:"Guarde referências usadas muitas vezes.",url:"https://developer.mozilla.org/docs/Web/API/Document_Object_Model",source:"MDN — DOM"},
+    {keys:["postmessage","post message"],title:"postMessage",text:"postMessage permite enviar mensagens entre janelas e iframes.",example:"frame.contentWindow.postMessage({command:'left'},'*');",tip:"Valide event.source e os dados recebidos antes de agir.",url:"https://developer.mozilla.org/docs/Web/API/Window/postMessage",source:"MDN — postMessage"},
+    {keys:["cors","cross origin"],title:"CORS",text:"CORS controla quando uma página pode ler respostas de outro domínio.",example:"fetch('https://exemplo.com/dados.json');",tip:"O navegador pode bloquear a leitura mesmo quando a URL existe.",url:"https://developer.mozilla.org/docs/Web/HTTP/Guides/CORS",source:"MDN — CORS"},
+    {keys:["var let","var por let","var versus let"],title:"var x let",text:"let tem escopo de bloco. var segue regras antigas de escopo.",example:"let pontos=0; const nome='Anabel';",tip:"Use const quando não houver reatribuição.",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/let",source:"MDN — let"},
+    {keys:["console.log","console log"],title:"console.log()",text:"console.log() envia uma mensagem ao console e é útil durante a depuração.",example:"console.log('teste');",tip:"Remova logs de diagnóstico desnecessários no código final.",url:"https://developer.mozilla.org/docs/Web/API/console/log_static",source:"MDN — console.log()"},
+    {keys:["arrow function","arrow functions","funcao seta","função seta"],title:"Arrow Function",text:"Arrow Function é uma sintaxe curta para funções e tem regras próprias de this.",example:"const dobro=x=>x*2;",tip:"A Anabel só converte automaticamente funções simples com retorno direto.",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Functions/Arrow_functions",source:"MDN — Arrow functions"}
+  ];
+
+  const IDEAS=[
+    {title:"Reino dos 16 Turnos",pitch:"Transforme uma vila em um reino em 16 turnos; economia, população, defesa e expansão disputam o mesmo orçamento.",mechanics:["recursos","território","defesa","eventos","16 turnos"]},
+    {title:"Fronteira de Pixels",pitch:"Controle um posto avançado. Explore, construa defesa ou negocie recursos com regiões vizinhas.",mechanics:["mapa","recursos","defesa","negociação"]},
+    {title:"Comandante 8-Bit",pitch:"Controle unidades em uma grade e capture pontos estratégicos antes do limite de rodadas.",mechanics:["grade","energia","captura","turnos"]},
+    {title:"Colônia Pixel",pitch:"Mantenha uma pequena colônia viva enquanto comida, população e defesa mudam a cada ciclo.",mechanics:["sobrevivência","recursos","eventos","população"]},
+    {title:"Núcleo de Guerra",pitch:"Reorganize energia e posições a cada rodada para romper o núcleo adversário.",mechanics:["energia","posicionamento","ataque","rodadas"]}
+  ];
+
+  function known(query){
+    const n=norm(query);let best=null,bestScore=0;
+    KB.forEach(k=>{let score=0;k.keys.forEach(key=>{const nk=norm(key);if(n.includes(nk))score+=nk.length;});if(score>bestScore){bestScore=score;best=k;}});
+    return best;
+  }
+
+  async function httpJson(url,ms=10000){
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),ms);
+    try{const r=await fetch(url,{signal:controller.signal});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json();}
+    finally{clearTimeout(timer);}
+  }
+
+  async function research(query){
+    const q=String(query||"").trim();
+    if(!q){log("ANABEL: informe o assunto da pesquisa.");return [];}
+    status.textContent="Pesquisando: "+q;
+    log("ANABEL: pesquisa na rede → "+q);
+    const urls=[
+      ["WIKIPEDIA","https://pt.wikipedia.org/w/rest.php/v1/search/page?q="+encodeURIComponent(q)+"&limit=5"],
+      ["STACKOVERFLOW","https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=relevance&q="+encodeURIComponent(q)+"&site=pt.stackoverflow&pagesize=5&filter=default"],
+      ["GITHUB","https://api.github.com/search/repositories?q="+encodeURIComponent(q)+"&per_page=5&sort=stars&order=desc"]
+    ];
+    const result=await Promise.allSettled(urls.map(x=>httpJson(x[1])));
+    const found=[],seen=new Set();
+    result.forEach((r,i)=>{
+      if(r.status!=="fulfilled")return;
+      const kind=urls[i][0],data=r.value;
+      const items=kind==="WIKIPEDIA"?(data.pages||[]).map(x=>({title:x.title||x.key,url:x.content_urls?.desktop?.page||("https://pt.wikipedia.org/wiki/"+encodeURIComponent(x.key||x.title)),note:x.description||"")):
+        kind==="STACKOVERFLOW"?(data.items||[]).map(x=>({title:x.title,url:x.link,note:(x.tags||[]).join(", ")})):
+        (data.items||[]).map(x=>({title:x.full_name,url:x.html_url,note:(x.stargazers_count||0)+" stars · "+(x.description||"sem descrição")}));
+      items.forEach(x=>{if(x.url&&!seen.has(x.url)){seen.add(x.url);found.push({kind,title:x.title,url:x.url,note:x.note});}});
+    });
+    found.slice(0,10).forEach(addSource);
+    log("ANABEL: pesquisa concluída → "+Math.min(found.length,10)+" referência(s).");
+    status.textContent=found.length+" referência(s).";
+    return found.slice(0,10);
+  }
+
+  function simple(text){
+    return String(text||"").replace(/\bPromise\b/gi,"resultado que pode chegar depois").replace(/\bcallback\b/gi,"função chamada depois").replace(/\bassíncrono\b/gi,"que continua enquanto outra tarefa termina").replace(/\bassíncrona\b/gi,"que continua enquanto outra tarefa termina");
+  }
+
+  async function answer(query){
+    const k=known(query);
+    if(k){
+      log("ANABEL: "+k.title);
+      log("EXPLICAÇÃO: "+k.text);
+      log("EXEMPLO: "+k.example);
+      log("DICA: "+k.tip);
+      addSource({kind:"LOCAL",title:k.source,url:k.url,note:"Referência técnica usada pela base local."});
+      return;
+    }
+    const found=await research(query);
+    if(!found.length){log("ANABEL: não encontrei material suficiente para responder com segurança.");return;}
+    const first=found[0];
+    log("RESPOSTA SIMPLIFICADA: "+simple(first.note||first.title));
+    log("DICA: abra a referência para conferir o contexto original.");
+  }
+
+  window.DevAnabel.research=research;
+  window.DevAnabel.answer=answer;
+
 /* APPEND */
 </script>
 </body>

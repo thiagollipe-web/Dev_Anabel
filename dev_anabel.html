@@ -116,8 +116,8 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   }
   function switchTab(i){
     i=Number(i);if(![0,1,2].includes(i))return;
-    $(".tab").forEach((b,n)=>{b.classList.toggle("active",n===i);b.setAttribute("aria-selected",String(n===i));});
-    $(".panel").forEach((p,n)=>p.classList.toggle("visible",n===i));
+    qsa(".tab").forEach((b,n)=>{b.classList.toggle("active",n===i);b.setAttribute("aria-selected",String(n===i));});
+    qsa(".panel").forEach((p,n)=>p.classList.toggle("visible",n===i));
     if(i===0)drawLater();
   }
   function theme(v){
@@ -192,7 +192,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   $("#export").addEventListener("click",exportCode);
   $("#undo").addEventListener("click",undo);
   $("#theme").addEventListener("change",e=>theme(e.target.value));
-  $(".tab").forEach((b,i)=>b.addEventListener("click",()=>switchTab(i)));
+  qsa(".tab").forEach((b,i)=>b.addEventListener("click",()=>switchTab(i)));
   $("#left").addEventListener("pointerdown",e=>{e.preventDefault();post("left");});
   $("#right").addEventListener("pointerdown",e=>{e.preventDefault();post("right");});
   ["dragenter","dragover"].forEach(t=>editor.addEventListener(t,e=>{e.preventDefault();editor.classList.add("drop");}));
@@ -414,10 +414,23 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     try{
       const url="https://api.mymemory.translated.net/get?q="+encodeURIComponent(original.slice(0,480))+"&langpair=en|pt-BR";
       const data=await httpJson(url,8000);
-      return data?.responseData?.translatedText||original;
-    }catch(e){
-      return original.replace(/\bprogramming\b/gi,"programação").replace(/\bgame\b/gi,"jogo").replace(/\bstrategy\b/gi,"estratégia").replace(/\blibrary\b/gi,"biblioteca").replace(/\bfunction\b/gi,"função").replace(/\bdata\b/gi,"dados");
-    }
+      const translated=data?.responseData?.translatedText;
+      if(translated)return translated;
+    }catch(e){}
+    return original
+      .replace(/\bThis function is a reusable block of code\.?/gi,"Esta função é um bloco reutilizável de código.")
+      .replace(/\bThis\b/gi,"Esta")
+      .replace(/\bthat\b/gi,"que")
+      .replace(/\bfunction\b/gi,"função")
+      .replace(/\breusable\b/gi,"reutilizável")
+      .replace(/\bblock of code\b/gi,"bloco de código")
+      .replace(/\bcode\b/gi,"código")
+      .replace(/\bprogramming\b/gi,"programação")
+      .replace(/\bgame\b/gi,"jogo")
+      .replace(/\bstrategy\b/gi,"estratégia")
+      .replace(/\blibrary\b/gi,"biblioteca")
+      .replace(/\bdata\b/gi,"dados")
+      .replace(/\bweb\b/gi,"web");
   }
 
   async function ideas(query){
@@ -565,7 +578,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   send.addEventListener("click",sendCommand);
   input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();sendCommand();}});
 
-  $(".quick").forEach(b=>b.addEventListener("click",()=>{input.value=b.dataset.command;sendCommand();}));
+  qsa(".quick").forEach(b=>b.addEventListener("click",()=>{input.value=b.dataset.command;sendCommand();}));
 
   if(new URLSearchParams(location.search).get("selftest")==="1"){
     const checks=[
@@ -583,7 +596,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       ["console.log",removeLogs("console.log(1);\nlet x=1;").count===1],
       ["Arrow",arrows("const f=function(a){return a+1;};").count===1],
       ["Sandbox",sandbox.getAttribute("sandbox")==="allow-scripts"],
-      ["Mobile tabs",$(".tab").length===3],
+      ["Mobile tabs",qsa(".tab").length===3],
       ["Fontes",typeof addSource==="function"]
     ];
     const ok=checks.filter(x=>x[1]).length;

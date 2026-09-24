@@ -114,7 +114,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   const fileInput=$("#file-input"),sources=$("#sources"),status=$("#status");
   const reviewSummary=$("#review-summary"),reviewList=$("#review-list"),correctedOutput=$("#corrected-output"),copyCorrected=$("#copy-corrected");
   const autocomplete=$("#autocomplete"),editorMeta=$("#editor-meta");
-  let runtimeKind="",pythonRuntimeReady=false,pendingPythonCode=null,acItems=[],acIndex=0;
+  let runtimeKind="",pythonRuntimeReady=false,pendingPythonCode=null,acItems=[],acIndex=0,autonomousBusy=false,autonomousLastKey="",autonomousTimer=null;
   const state={
     theme:"green",color:"#00ff33",busy:false,queued:false,sandboxUrl:"",language:"auto",
     history:[
@@ -123,6 +123,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       "ANABEL: conhecimento, regras, pesquisa e ferramentas ativas."
     ],
     sourceList:[],snapshots:[],ideas:[],selectedIdea:null,pendingAction:null,
+    autonomous:{enabled:true,lastQuery:"",lastReason:"",candidateCount:0,selected:"",score:0,lastAt:0},
     review:{issues:[],improvements:[],correctedCode:""}
   };
 

@@ -1522,7 +1522,6 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   const AI_ENDPOINT=localStorage.getItem("anabel-api-endpoint") || (location.hostname.endsWith(".vercel.app") ? "/api/gemini" : "https://dev-anabel.vercel.app/api/gemini");
 
   async function callRemoteAssistant(query){
-    if(await callOllamaAssistant(query))return true;
     const history=state.history.slice(-12).map((line,i)=>({role:i%2===0?"user":"model",parts:[{text:String(line)}]}));
     try{
       status.textContent="IA REMOTA: Gemini / Groq…";
@@ -1795,9 +1794,6 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     intent,
     runDiagnostic,
     autoFixSystem,
-    testOllamaConnection,
-    ollamaEndpoint:OLLAMA_ENDPOINT,
-    ollamaModel:OLLAMA_MODEL
   };
 
   editor.addEventListener("input",()=>{if(state.language==="auto")setLanguage("auto");else setLanguage(state.language);updateLineNumbers();saveSessionDebounced();if(detectLanguage(editor.value)==="python")renderAutocomplete(false);else autocomplete.classList.remove("show");});

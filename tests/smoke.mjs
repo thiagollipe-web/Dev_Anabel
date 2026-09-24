@@ -208,7 +208,7 @@ if(remote!=="const remoto = 7;") throw new Error("URL mock não retornou o conte
 await page.evaluate(()=>window.DevAnabel.loadUrl("https://example.com/tutorial"));
 await page.waitForTimeout(100);
 const extracted=await page.evaluate(()=>({editor:document.querySelector("#editor").value,output:document.querySelector("#corrected-output").value,language:window.DevAnabel.state.language}));
-if(extracted.editor!=="const resultado = 99;\\nconsole.log(resultado);"||extracted.output!==extracted.editor||extracted.language!=="javascript") throw new Error("Leitura do site não extraiu e entregou o código");
+if(extracted.editor!=="const resultado = 99;\nconsole.log(resultado);"||extracted.output!==extracted.editor||extracted.language!=="javascript") throw new Error("Leitura do site não extraiu e entregou o código");
 
 const researchCode=await page.evaluate(()=>window.DevAnabel.intent("pesquise um exemplo de código de canvas").type);
 if(researchCode!=="researchCode") throw new Error("Modo pesquisa + código não foi reconhecido");

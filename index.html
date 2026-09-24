@@ -403,7 +403,161 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     switchTab(1);
   }
 
-/* APPEND */
+
+  async function translateSimple(text){
+    const original=String(text||"");
+    try{
+      const url="https://api.mymemory.translated.net/get?q="+encodeURIComponent(original.slice(0,480))+"&langpair=en|pt-BR";
+      const data=await httpJson(url,8000);
+      return data?.responseData?.translatedText||original;
+    }catch(e){
+      return original.replace(/\bprogramming\b/gi,"programação").replace(/\bgame\b/gi,"jogo").replace(/\bstrategy\b/gi,"estratégia").replace(/\blibrary\b/gi,"biblioteca").replace(/\bfunction\b/gi,"função").replace(/\bdata\b/gi,"dados");
+    }
+  }
+
+  async function ideas(query){
+    const q=String(query||"jogo estratégia 8-bit").trim();
+    await research(q+" game design");
+    state.ideas=[...IDEAS];
+    log("ANABEL: agora vou separar referências de pesquisa de propostas originais.");
+    state.ideas.forEach((x,i)=>{
+      log("IDEIA "+(i+1)+" — "+x.title);
+      log("  "+x.pitch);
+      log("  MECÂNICAS: "+x.mechanics.join(", "));
+    });
+    log("ANABEL: escolha uma ideia pelo número. Depois diga “me dê o código”.");
+  }
+
+  async function smartAnswer(query){
+    const item=known(query);
+    if(item){
+      log("ANABEL: "+item.title);
+      log("EXPLICAÇÃO: "+item.text);
+      log("EXEMPLO: "+item.example);
+      log("DICA: "+item.tip);
+      addSource({kind:"LOCAL",title:item.source,url:item.url,note:"Referência técnica da base local."});
+      return;
+    }
+    const found=await research(query);
+    if(!found.length){
+      log("ANABEL: não encontrei material suficiente para responder com segurança.");
+      return;
+    }
+    let detail=found[0].note||found[0].title;
+    if(/\b(the|this|function|game|library|data|how|what)\b/i.test(detail))detail=await translateSimple(detail);
+    log("RESPOSTA SIMPLIFICADA: "+detail);
+    log("DICA: a referência está na área FONTES; consulte o original para contexto completo.");
+  }
+
+  function intent(text){
+    const n=norm(text);
+    const url=text.match(/https?:\/\/[^\s<>"]+/i)?.[0]?.replace(/[),.;]+$/,"");
+    if(url)return {type:"url",value:url};
+    if(/^\/?(ajuda|help|comandos)(\s|$)/.test(n))return {type:"help"};
+    if(/^\/?(fontes?|source)(\s|$)/.test(n))return {type:"sources"};
+    if(/^\/?(desfazer|undo|voltar)(\s|$)/.test(n))return {type:"undo"};
+    if(/^\/?(executar|rodar|run|play)(\s|$)/.test(n))return {type:"run"};
+    if(/^\/?(analisar|analise|audit|diagnostico)(\s|$)/.test(n)||/\b(analisar|analise|audit|diagnostico)\b.*\b(codigo|editor)\b/.test(n))return {type:"analyze"};
+    if(/^\/?(refatorar|modernizar|otimizar)(\s|$)/.test(n)||/console\.log|\bvar\b.*\blet\b|arrow function/.test(n))return {type:"refactor"};
+    const select=n.match(/\b(?:ideia|opcao|opção)\s*([1-5])\b/)||n.match(/\b(?:gostei|escolho|quero)\b.*\b([1-5])\b/);
+    if(select)return {type:"select",value:Number(select[1])};
+    if(/^\/?ideias?(\s|$)/.test(n)||/\b(dica|sugestao|sugestão)\b.*\b(jogo|game)\b/.test(n))return {type:"ideas",value:n.replace(/^\/?ideias?\s*/,"")};
+    if(/^\/?(pesquisar|pesquisa|buscar|busca)(\s|$)/.test(n)||/\b(busque|buscar|pesquise|pesquisar|procure|na rede|na internet)\b/.test(n))return {type:"research",value:text.replace(/\b(busque|buscar|pesquise|pesquisa|pesquisar|procure|na rede|na internet)\b/gi,"").trim()};
+    if(/\b(o que e|o que é|como funciona|como faco|como faço|como criar|como usar|explique|explica|por que|por quê|qual a melhor maneira)\b/.test(n))return {type:"question",value:text};
+    if(/\b(crie|criar|gere|gerar|faça|faca|desenvolva|codifique|entregue|me de|me dê|me entregue)\b.*\b(jogo|game|codigo|código|prototipo|protótipo)\b/.test(n))return {type:"generate"};
+    return {type:"fallback",value:text};
+  }
+
+  async function handleCommand(text){
+    const i=intent(text);
+
+    if(i.type==="help"){
+      log("COMANDOS: /ajuda · /pesquisar assunto · /ideias assunto · /analisar · /refatorar · /executar · /desfazer · /fontes");
+      log("NATURAL: faça perguntas, mande uma URL, peça uma ideia, escolha uma ideia e peça o código.");
+      return;
+    }
+
+    if(i.type==="sources"){
+      if(!state.sourceList.length)log("ANABEL: nenhuma referência nesta sessão.");
+      else{log("ANABEL: "+state.sourceList.length+" referência(s) disponíveis.");sources.classList.add("show");}
+      return;
+    }
+
+    if(i.type==="undo"){undo();return;}
+    if(i.type==="run"){run(editor.value);return;}
+    if(i.type==="analyze"){analyze();return;}
+    if(i.type==="refactor"){refactor();return;}
+    if(i.type==="url"){await loadUrl(i.value);return;}
+    if(i.type==="research"){await research(i.value);return;}
+    if(i.type==="question"){await smartAnswer(i.value);return;}
+    if(i.type==="ideas"){await ideas(i.value||"jogo estratégia 8-bit");return;}
+    if(i.type==="select"){selectIdea(i.value);return;}
+    if(i.type==="generate"){generate();return;}
+
+    const item=known(i.value);
+    if(item){await smartAnswer(i.value);return;}
+
+    log("ANABEL: posso pesquisar, explicar, analisar o código, refatorar, gerar ideias ou executar o Sandbox.");
+    log("DICA: experimente “Anabel, pesquise Canvas”, “quero uma ideia de jogo” ou “analise meu código”.");
+  }
+
+  async function sendCommand(){
+    if(state.busy)return;
+    const text=input.value.trim();
+    if(!text)return;
+    state.busy=true;send.disabled=true;input.value="";log("DEV: "+text);
+    try{await handleCommand(text);}
+    catch(e){console.error("Dev_Anabel:",e);log("ERRO: "+(e.message||"falha inesperada"));}
+    finally{state.busy=false;send.disabled=false;input.focus();}
+  }
+
+  window.DevAnabel={
+    state,
+    switchTab,
+    theme,
+    run,
+    undo,
+    loadUrl,
+    handleFiles,
+    research,
+    answer:smartAnswer,
+    analyze,
+    refactor,
+    ideas,
+    selectIdea,
+    generate,
+    intent
+  };
+
+  send.addEventListener("click",sendCommand);
+  input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();sendCommand();}});
+
+  $(".quick").forEach(b=>b.addEventListener("click",()=>{input.value=b.dataset.command;sendCommand();}));
+
+  if(new URLSearchParams(location.search).get("selftest")==="1"){
+    const checks=[
+      ["DOM",!!canvas&&!!editor&&!!sandbox&&!!input&&!!send],
+      ["Canvas",!!ctx],
+      ["Intent: análise",intent("Anabel analise meu codigo").type==="analyze"],
+      ["Intent: pergunta",intent("como criar um jogo").type==="question"],
+      ["Intent: ideias",intent("Anabel quero uma dica de jogo de estrategia").type==="ideas"],
+      ["Intent: pesquisa",intent("/pesquisar Canvas").type==="research"],
+      ["Intent: URL",intent("https://example.com/test.html").type==="url"],
+      ["Intent: código",intent("me dê o código").type==="generate"],
+      ["var→let",refactorVar("var x=1;").code.includes("let x")],
+      ["console.log",removeLogs("console.log(1);\nlet x=1;").count===1],
+      ["Arrow",arrows("const f=function(a){return a+1;};").count===1],
+      ["Sandbox",sandbox.getAttribute("sandbox")==="allow-scripts"],
+      ["Mobile tabs",$(".tab").length===3],
+      ["Fontes",typeof addSource==="function"]
+    ];
+    const ok=checks.filter(x=>x[1]).length;
+    log("SELFTEST: "+ok+"/"+checks.length+" verificações aprovadas.");
+    checks.filter(x=>!x[1]).forEach(x=>log("SELFTEST FALHA: "+x[0]));
+  }
+})();
+
+/* END */
 </script>
 </body>
 </html>

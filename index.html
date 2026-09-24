@@ -792,6 +792,25 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     return await documentationSearch(q);
   }
 
+  function codeQualityScore(code,language){
+    const s=String(code||"");
+    const m=mask(s);
+    let score=Math.min(25,Math.floor(s.length/80));
+    const reasons=[];
+    if(s.length>=160){score+=8;reasons.push("completude");}
+    if(/function\s+\w+|=>|\bdef\s+\w+/.test(m)){score+=10;reasons.push("estrutura modular");}
+    if(/try\s*\{|try:|catch\s*\(|response\.ok|throw\s+/.test(m)){score+=8;reasons.push("tratamento de erros");}
+    if(/addEventListener|requestAnimationFrame|async\s+|await\s+/.test(m)){score+=6;reasons.push("eventos/fluxo assíncrono");}
+    if(/\bconst\b|\blet\b|===|!==/.test(m)){score+=5;reasons.push("sintaxe moderna");}
+    if(/aria-|textContent\s*=|createElement\(/.test(m)){score+=4;reasons.push("integração DOM");}
+    if(/getContext\(|canvas|fillRect|drawImage/.test(m)){score+=4;reasons.push("Canvas");}
+    if(/\/\*|\/\/|#\s|'''|"""/.test(s)){score+=3;reasons.push("documentação");}
+    if(/eval\(|new\s+Function\(|document\.write\(/.test(m)){score-=12;reasons.push("padrão inseguro/legado");}
+    if(/\bvar\b|console\.log\s*\(/.test(m)){score-=3;reasons.push("debug/legado");}
+    if(language==="python"&&/import\s+(requests|numpy|pandas|pygame)/.test(m)){score+=3;reasons.push("biblioteca Python");}
+    return {score,reasons:[...new Set(reasons)]};
+  }
+
   function sourceWeight(kind,url=""){
     const k=String(kind||"").toUpperCase(),u=String(url||"").toLowerCase();
     if(/developer\.mozilla\.org|docs\.python\.org/.test(u))return 10;

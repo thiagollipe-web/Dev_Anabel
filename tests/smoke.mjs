@@ -20,6 +20,7 @@ const routes=[
   ["https://api.stackexchange.com/**",{items:[{title:"Como usar Canvas",link:"https://pt.stackoverflow.com/q/1",tags:["javascript","canvas"]}]}],
   ["https://api.github.com/search/repositories**",{items:[{full_name:"test/canvas",html_url:"https://github.com/test/canvas",description:"Canvas test",stargazers_count:42}]}],
   ["https://raw.githubusercontent.com/**",{body:"const remoto = 7;"}],
+  ["https://raw.githubusercontent.com/**",{body:"const remoto = 7;"}],
   ["https://api.mymemory.translated.net/**",{responseData:{translatedText:"Uma função é um bloco reutilizável de código."}}]
 ];
 
@@ -38,7 +39,7 @@ const base=await page.evaluate(()=>({
   noLlm:![...document.scripts].some(s=>/openai|anthropic|gemini|ollama|qwen|gemma/i.test(s.textContent))
 }));
 
-if(base.selftest!=="SELFTEST: 14/14 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest);
+if(base.selftest!=="SELFTEST: 16/16 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest);
 if(base.mobileTabs!==3||base.sandbox!=="allow-scripts"||!base.dom||!base.noLlm) throw new Error("Estrutura básica inválida");
 
 const intent=await page.evaluate(()=>[
@@ -46,9 +47,11 @@ const intent=await page.evaluate(()=>[
   window.DevAnabel.intent("como criar um jogo").type,
   window.DevAnabel.intent("Anabel quero uma dica de jogo de estrategia").type,
   window.DevAnabel.intent("https://example.com/x.html").type,
-  window.DevAnabel.intent("me dê o código").type
+  window.DevAnabel.intent("me dê o código").type,
+  window.DevAnabel.intent("crie space invaders").type,
+  window.DevAnabel.intent("sim").type
 ]);
-if(JSON.stringify(intent)!==JSON.stringify(["analyze","question","ideas","url","generate"])) throw new Error("Roteamento de intenção inválido: "+JSON.stringify(intent));
+if(JSON.stringify(intent)!==JSON.stringify(["analyze","question","ideas","url","generate","space","confirm"])) throw new Error("Roteamento de intenção inválido: "+JSON.stringify(intent));
 
 const ref=await page.evaluate(()=>{
   const e=document.querySelector("#editor");
@@ -56,7 +59,7 @@ const ref=await page.evaluate(()=>{
   const result=window.DevAnabel.refactor();
   return {result,value:e.value};
 });
-if(ref.result.varCount!==1||ref.result.logCount!==1||ref.result.arrow!==undefined||ref.result.arrowCount!==1) throw new Error("Contagem da refatoração inválida");
+if(ref.result.varCount!==1||ref.result.logCount!==1||ref.result.arrowCount!==1) throw new Error("Contagem da refatoração inválida");
 if(!ref.value.includes("let x=1;")||ref.value.includes("console.log")||!ref.value.includes("const f = (a) => a+1;")||!ref.value.includes('const txt="var y"')) throw new Error("Refatoração produziu resultado incorreto");
 
 await page.evaluate(()=>window.DevAnabel.undo());

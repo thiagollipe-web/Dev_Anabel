@@ -198,15 +198,28 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     else{pendingPythonCode=source;log("ANABEL: Python aguardando o ambiente ficar pronto.");}
     return true;
   }
+  function webRuntimeHTML(code,language){
+    const source=String(code||"");
+    const isModule=language==="javascript" && /^\\s*(?:import|export)\\b/m.test(source);
+    const bootstrap='<script>(()=>{addEventListener("error",e=>parent.postMessage({source:"dev-anabel-runtime",type:"error",error:String(e.message||"erro no runtime")},"*"));addEventListener("unhandledrejection",e=>parent.postMessage({source:"dev-anabel-runtime",type:"error",error:String(e.reason||"Promise rejeitada")},"*"));const oldLog=console.log.bind(console);console.log=(...a)=>{oldLog(...a);parent.postMessage({source:"dev-anabel-runtime",type:"log",text:a.map(String).join(" ")},"*")};})()<\\/script>';
+    if(language==="css"){
+      return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dev_Anabel Live</title>'+bootstrap+'<style>'+source.replace(/<\\/style/gi,"<\\\\/style")+'</style></head><body><div id="app"></div></body></html>';
+    }
+    const scriptTag=isModule?'<script type="module">':'<script>';
+    const safe=source.replace(/<\\/script/gi,"<\\\\/script");
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dev_Anabel Live</title>'+bootstrap+'</head><body><div id="app"></div>'+scriptTag+safe+'</script></body></html>';
+  }
   function run(code){
     if(!String(code||"").trim()){log("ANABEL: não há código para executar.");return false;}
     const language=state.language==="auto"?detectLanguage(code):state.language;
     if(language==="python")return runPython(code);
     revokeSandbox();
     runtimeKind="html";
-    const themed=state.theme==="amber"?String(code).replaceAll("#00ff33","#ffb000").replaceAll("#0f3","#ffb000"):String(code);
-    state.sandboxUrl=URL.createObjectURL(new Blob([themed],{type:"text/html;charset=utf-8"}));
-    sandbox.src=state.sandboxUrl;log("ANABEL: código web enviado ao Sandbox isolado.");switchTab(2);status.textContent="Sandbox web ativo.";return true;
+    const source=String(code);
+    const themed=state.theme==="amber"?source.replaceAll("#00ff33","#ffb000").replaceAll("#0f3","#ffb000"):source;
+    const full=/<!doctype html|<html\\b/i.test(themed.trim())?themed:webRuntimeHTML(themed,language);
+    state.sandboxUrl=URL.createObjectURL(new Blob([full],{type:"text/html;charset=utf-8"}));
+    sandbox.src=state.sandboxUrl;log("ANABEL: código "+(language==="javascript"?"JavaScript":"web")+" executado no Sandbox isolado.");switchTab(2);status.textContent="Sandbox web ativo.";return true;
   }
   function post(command){
     if(!sandbox.contentWindow){log("ANABEL: Sandbox ainda não está pronto.");return;}

@@ -266,27 +266,6 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     return String(text||"").replace(/\bPromise\b/gi,"resultado que pode chegar depois").replace(/\bcallback\b/gi,"função chamada depois").replace(/\bassíncrono\b/gi,"que continua enquanto outra tarefa termina").replace(/\bassíncrona\b/gi,"que continua enquanto outra tarefa termina");
   }
 
-  async function answer(query){
-    const k=known(query);
-    if(k){
-      log("ANABEL: "+k.title);
-      log("EXPLICAÇÃO: "+k.text);
-      log("EXEMPLO: "+k.example);
-      log("DICA: "+k.tip);
-      addSource({kind:"LOCAL",title:k.source,url:k.url,note:"Referência técnica usada pela base local."});
-      return;
-    }
-    const found=await research(query);
-    if(!found.length){log("ANABEL: não encontrei material suficiente para responder com segurança.");return;}
-    const first=found[0];
-    log("RESPOSTA SIMPLIFICADA: "+simple(first.note||first.title));
-    log("DICA: abra a referência para conferir o contexto original.");
-  }
-
-  window.DevAnabel.research=research;
-  window.DevAnabel.answer=answer;
-
-
   function mask(code){
     let out="",mode="code",quote="";
     for(let i=0;i<code.length;i++){
@@ -382,13 +361,6 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
 
   function spaceGame(){
     return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Space Invaders</title><style>body{margin:0;background:#000;color:#00ff33;font-family:monospace;display:grid;place-items:center;min-height:100vh}canvas{width:min(92vw,600px);border:2px solid #00ff33;image-rendering:pixelated}</style></head><body><canvas id="g" width="360" height="260"></canvas><script>(()=>{const c=document.getElementById("g"),x=c.getContext("2d");let p=166,shot=null,score=0,en=[];for(let y=0;y<2;y++)for(let i=0;i<7;i++)en.push({x:34+i*46,y:34+y*24});function mv(d){p=Math.max(5,Math.min(330,p+d*14))}addEventListener("keydown",e=>{if(e.key==="ArrowLeft")mv(-1);if(e.key==="ArrowRight")mv(1);if(e.code==="Space"&&!shot)shot={x:p+12,y:230}});addEventListener("message",e=>{if(e.source!==parent)return;const q=e.data?.command;if(q==="left")mv(-1);if(q==="right")mv(1);if(q==="fire"&&!shot)shot={x:p+12,y:230}});function loop(){x.clearRect(0,0,360,260);x.fillStyle="#00ff33";x.font="12px monospace";x.fillText("SCORE "+String(score).padStart(4,"0"),8,15);en.forEach(a=>x.fillRect(a.x,a.y,24,12));x.fillRect(p,236,28,8);x.fillRect(p+12,228,4,8);if(shot){shot.y-=7;x.fillRect(shot.x,shot.y,3,8);for(let i=en.length-1;i>=0;i--){const a=en[i];if(shot.x>=a.x-2&&shot.x<=a.x+26&&shot.y<=a.y+12&&shot.y+8>=a.y){en.splice(i,1);shot=null;score+=10;break}}if(shot&&shot.y<0)shot=null}requestAnimationFrame(loop)}requestAnimationFrame(loop)})()<\/script></body></html>';
-  }
-
-  function ideas(query){
-    state.ideas=[...IDEAS];
-    log("ANABEL: referências de pesquisa podem servir de contexto; as propostas abaixo vêm do catálogo local.");
-    state.ideas.forEach((x,i)=>{log("IDEIA "+(i+1)+" — "+x.title);log("  "+x.pitch);log("  MECÂNICAS: "+x.mechanics.join(", "));});
-    log("ANABEL: escolha uma ideia pelo número.");
   }
 
   function selectIdea(n){

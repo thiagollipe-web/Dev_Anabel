@@ -169,10 +169,10 @@ const intent=await page.evaluate(()=>[
 ]);
 if(JSON.stringify(intent)!==JSON.stringify(["analyze","question","ideas","url","generate","space","confirm","fix","improve"])) throw new Error("Roteamento de intenção inválido: "+JSON.stringify(intent));
 
-const ref=await page.evaluate(()=>{
+const ref=await page.evaluate(async()=>{
   const e=document.querySelector("#editor");
   e.value='var x=1;\nconsole.log(x);\nconst f = function(a) { return a+1; };\nconst txt="var y";';
-  const result=window.DevAnabel.refactor();
+  const result=await window.DevAnabel.refactor();
   return {result,value:e.value};
 });
 if(ref.result.varCount!==1||ref.result.logCount!==1||ref.result.arrowCount!==1) throw new Error("Contagem da refatoração inválida");

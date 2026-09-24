@@ -102,7 +102,7 @@ async function health(res){
 
 function safePath(urlPath){
   const decoded=decodeURIComponent(urlPath);
-  const relative=decoded==="/"?"index.html":decoded.replace(/^/+/,"");
+  const relative=decoded==="/"?"index.html":decoded.replace(/^\/+/,"");
   const target=path.resolve(ROOT,relative);
   if(target!==ROOT&&!target.startsWith(ROOT+path.sep))return null;
   return target;

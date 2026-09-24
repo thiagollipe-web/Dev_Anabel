@@ -1,16 +1,18 @@
-/* Configuração pública do app Firebase para o Dev_Anabel.
-   Substitua somente os valores abaixo pelos dados do seu app Web no Firebase.
-   NÃO coloque aqui a chave secreta Gemini; o Firebase AI Logic mantém essa chave no servidor.
+/* Configuração pública do app Firebase do Dev_Anabel.
+   Estes valores são os dados do aplicativo Web fornecidos pelo Firebase.
+   A chave Gemini não é colocada neste arquivo.
 */
 window.ANABEL_FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyBSV1EPq8RsGF2SbSshqJMhlcdo4CahmGM",
+  authDomain: "ai-services-66854.firebaseapp.com",
+  projectId: "ai-services-66854",
+  storageBucket: "ai-services-66854.firebasestorage.app",
+  messagingSenderId: "38873470814",
+  appId: "1:38873470814:web:dcca67862662a39ae0c568f",
+  measurementId: "G-W1MK89H1W"
 };
 
-/* Obrigatório para produção com Firebase App Check + reCAPTCHA Enterprise. */
+/* Será preenchido depois de registrar o App Check no Firebase. */
 window.ANABEL_FIREBASE_APPCHECK_SITE_KEY = "";
+
 window.ANABEL_FIREBASE_MODEL = "gemini-2.5-flash";

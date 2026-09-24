@@ -16,11 +16,31 @@ page.on("console",m=>{if(m.type()==="error")errors.push("console: "+m.text())});
 page.on("pageerror",e=>errors.push("pageerror: "+e.message));
 
 const routes=[
-  ["https://pt.wikipedia.org/**",{pages:[{title:"Canvas",key:"Canvas",description:"Área de desenho do navegador",content_urls:{desktop:{page:"https://pt.wikipedia.org/wiki/Canvas"}}]}],
-  ["https://api.stackexchange.com/**",{items:[{title:"Como usar Canvas",link:"https://pt.stackoverflow.com/q/1",tags:["javascript","canvas"]}]}],
-  ["https://api.github.com/search/repositories**",{items:[{full_name:"test/canvas",html_url:"https://github.com/test/canvas",description:"Canvas test",stargazers_count:42}]}],
-  ["https://raw.githubusercontent.com/**",{body:"const remoto = 7;"}],
-  ["https://api.mymemory.translated.net/**",{responseData:{translatedText:"Uma função é um bloco reutilizável de código."}}]
+  {
+    pattern:"https://pt.wikipedia.org/**",
+    contentType:"application/json",
+    body:{pages:[{title:"Canvas",key:"Canvas",description:"Área de desenho do navegador",content_urls:{desktop:{page:"https://pt.wikipedia.org/wiki/Canvas"}}}]}
+  },
+  {
+    pattern:"https://api.stackexchange.com/**",
+    contentType:"application/json",
+    body:{items:[{title:"Como usar Canvas",link:"https://pt.stackoverflow.com/q/1",tags:["javascript","canvas"]}]}
+  },
+  {
+    pattern:"https://api.github.com/search/repositories**",
+    contentType:"application/json",
+    body:{items:[{full_name:"test/canvas",html_url:"https://github.com/test/canvas",description:"Canvas test",stargazers_count:42}]}
+  },
+  {
+    pattern:"https://raw.githubusercontent.com/**",
+    contentType:"text/plain",
+    body:"const remoto = 7;"
+  },
+  {
+    pattern:"https://api.mymemory.translated.net/**",
+    contentType:"application/json",
+    body:{responseData:{translatedText:"Uma função é um bloco reutilizável de código."}}
+  }
 ];
 
 for(const [pattern,json] of routes){

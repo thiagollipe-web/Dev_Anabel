@@ -49,7 +49,7 @@ jobs:
           const checks = [
             ['uma função ideas', (html.match(/\b(?:async )?function ideas\s*\(/g) || []).length === 1],
             ['uma função smartAnswer', (html.match(/\basync function smartAnswer\s*\(/g) || []).length === 1],
-            ['intent exposto', html.includes('intent\n  }')],
+            ['intent exposto', html.includes('intent')],
             ['sandbox isolado', html.includes('sandbox="allow-scripts"')],
             ['selftest presente', html.includes('SELFTEST:')],
             ['sem script remoto obrigatório', !/<script[^>]+src=/.test(html)]

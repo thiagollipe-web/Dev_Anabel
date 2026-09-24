@@ -1,1 +1,87 @@
-PLACEHOLDER
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050505">
+<title>Dev_Anabel — Retro Development Bot</title>
+<style>
+:root{--bg:#050505;--panel:#000;--border:#333;--fg:#00ff33;--glow:rgba(0,255,51,.2);--muted:#888;--warn:#ffcc00}
+[data-theme="amber"]{--fg:#ffb000;--glow:rgba(255,176,0,.2)}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font-family:monospace}
+body{padding:10px;display:flex;flex-direction:column;align-items:center;gap:10px;overscroll-behavior:contain}
+button,input,textarea,select{font:inherit}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+header{width:100%;max-width:1400px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+h1{margin:0;font-size:20px;letter-spacing:2px;text-transform:uppercase}
+.toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.tool,.theme select{background:#101010;color:var(--fg);border:1px solid var(--fg);padding:7px 10px;cursor:pointer}
+.theme{display:flex;gap:5px;align-items:center}
+#file-input{display:none}
+.mobile-tabs{display:none;width:100%;gap:5px}
+.tab{flex:1;background:#101010;color:var(--muted);border:1px solid var(--border);padding:10px;cursor:pointer}
+.tab.active{color:var(--fg);border-color:var(--fg)}
+#workspace{width:1400px;max-width:100%;height:min(480px,64vh);min-height:310px;display:flex;gap:12px}
+.panel{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
+.label{font-size:11px;color:var(--muted);margin-bottom:5px;text-transform:uppercase}
+canvas,#sandbox,#editor{width:100%;height:100%;min-height:0}
+canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0 0 20px var(--glow)}
+#editor{flex:1;resize:none;background:#0b0b0b;color:var(--fg);border:2px solid var(--border);padding:12px;outline:none;white-space:pre;font:12px/1.4 "Courier New",monospace;tab-size:4}
+#sandbox{display:block;border:2px solid var(--border);background:#000}
+#controls{width:1400px;max-width:100%;display:flex;flex-direction:column;gap:7px}
+#input-row{display:flex;gap:6px}
+#input{flex:1;min-width:0;background:#000;color:var(--fg);border:1px solid var(--fg);padding:12px;font-size:16px}
+#send{background:var(--fg);color:#000;border:0;padding:0 22px;font-weight:bold;cursor:pointer}
+#quick{display:flex;gap:5px;flex-wrap:wrap}
+.quick{background:#101010;color:var(--fg);border:1px solid var(--fg);padding:5px 8px;font-size:10px;cursor:pointer}
+#sources{display:none;max-height:130px;overflow:auto;background:#030303;border-top:1px solid var(--border);padding:7px;font-size:10px}
+#sources.show{display:block}
+.source{margin-bottom:6px;line-height:1.35}.source a{color:var(--fg);word-break:break-all}.source span{color:var(--muted)}
+#status{font-size:10px;color:var(--muted);min-height:13px}
+#pad{display:none;justify-content:center;gap:10px}
+.pad{background:#202020;color:var(--fg);border:2px solid var(--fg);padding:13px 24px;touch-action:manipulation}
+.drop{border-color:var(--fg)!important;box-shadow:0 0 15px var(--glow)!important}
+@media(max-width:900px){.mobile-tabs{display:flex}.panel{display:none}.panel.visible{display:flex}#workspace{height:58vh;min-height:290px}.toolbar{width:100%}.toolbar>*{flex:1}#pad{display:flex}}
+@media(max-width:520px){h1{font-size:16px}.theme{width:100%}.theme select{flex:1}#input-row{flex-direction:column}#send{min-height:44px}.quick{flex:1;text-align:center}.pad{flex:1}}
+</style>
+</head>
+<body>
+<header>
+<h1>Dev_Anabel Core System</h1>
+<div class="toolbar">
+<label class="tool" for="file-input">📎 ANEXAR</label>
+<input id="file-input" type="file" multiple accept=".html,.htm,.js,.mjs,.css,.json,.txt,.md,.xml,.svg,.csv,.py,.java,.c,.cpp,.h,.hpp,.cs,.ts,.tsx,.jsx">
+<button class="tool" id="export" type="button">💾 EXPORTAR</button>
+<button class="tool" id="undo" type="button">↶ DESFAZER</button>
+<div class="theme"><span>CRT:</span><select id="theme"><option value="green">VERDE</option><option value="amber">ÂMBAR</option></select></div>
+</div>
+</header>
+<div class="mobile-tabs">
+<button class="tab active" type="button" data-tab="0">Terminal</button>
+<button class="tab" type="button" data-tab="1">Código</button>
+<button class="tab" type="button" data-tab="2">Live View</button>
+</div>
+<main id="workspace">
+<section class="panel visible" id="p0"><div class="label">📟 Terminal CRT</div><canvas id="terminal" width="450" height="450"></canvas><div id="sources"></div></section>
+<section class="panel" id="p1"><div class="label">💻 Código Fonte</div><textarea id="editor" spellcheck="false" placeholder="// Cole ou anexe código e documentos textuais aqui..."></textarea></section>
+<section class="panel" id="p2"><div class="label">🚀 Sandbox de Execução</div><iframe id="sandbox" title="Live View" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe></section>
+</main>
+<section id="controls">
+<div id="input-row"><input id="input" autocomplete="off" autofocus placeholder="Ex.: Anabel, me dê uma ideia de jogo de estratégia 8-bit"><button id="send" type="button">EXECUTAR</button></div>
+<div id="quick">
+<button class="quick" data-command="/ajuda" type="button">/ajuda</button>
+<button class="quick" data-command="/analisar" type="button">/analisar</button>
+<button class="quick" data-command="/refatorar" type="button">/refatorar</button>
+<button class="quick" data-command="/executar" type="button">/executar</button>
+<button class="quick" data-command="/ideias jogo estratégia 8-bit" type="button">/ideias</button>
+<button class="quick" data-command="/fontes" type="button">/fontes</button>
+</div>
+<div id="status"></div>
+</section>
+<section id="pad"><button class="pad" id="left" type="button">◀ ESQ</button><button class="pad" id="right" type="button">DIR ▶</button></section>
+<script>
+/* APPEND */
+</script>
+</body>
+</html>

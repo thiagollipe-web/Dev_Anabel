@@ -9,7 +9,7 @@ if(!html.includes("window.DevAnabel")) throw new Error("DevAnabel global ausente
 if(!html.includes('sandbox="allow-scripts"')) throw new Error("Sandbox ausente");
 if(/openai|anthropic|gemini|ollama|qwen|gemma/i.test(html)) throw new Error("Dependência de LLM detectada");
 
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,channel:"chrome"});
 const page=await browser.newPage({viewport:{width:1280,height:900}});
 const errors=[];
 page.on("console",m=>{if(m.type()==="error")errors.push("console: "+m.text())});

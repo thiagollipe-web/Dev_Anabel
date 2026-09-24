@@ -1550,11 +1550,11 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(select)return {type:"select",value:Number(select[1])};
     if(/^\/?ideias?(\s|$)/.test(n)||/\b(dica|sugestao|sugestão)\b.*\b(jogo|game)\b/.test(n))return {type:"ideas",value:n.replace(/^\/?ideias?\s*/,"")};
     if(/\b(?:procure|encontre|busque|ache)\b/.test(n)&&/\b(?:codigo|código|script|exemplo|implementacao|implementação)\b/.test(n))return {type:"autonomousSearch",value:text.replace(/\b(?:procure|encontre|busque|ache|pesquise|pesquisar)\b/gi,"").replace(/\b(?:me\s+)?(?:de|dê|traga|entregue|entregar)\b/gi,"").replace(/\b(?:codigo|código)\b/gi,"").trim()};
+    if(/\b(crie|criar|gere|gerar|faça|faca|desenvolva|codifique|entregue|me de|me dê|me entregue)\b.*\b(jogo|game|codigo|código|prototipo|protótipo)\b/.test(n))return {type:"generate"};
     if(/\b(?:pesquise|pesquisa|pesquisar|busque|buscar|procure|na internet|na rede)\b/.test(n)&&/\b(?:codigo|código|script|exemplo|implemente|implementacao|implementação)\b/.test(n))return {type:"researchCode",value:text.replace(/\b(?:pesquise|pesquisa|pesquisar|busque|buscar|procure|na internet|na rede)\b/gi,"").replace(/\b(?:me\s+)?(?:de|dê|traga|entregue|entregar)\b/gi,"").replace(/\b(?:codigo|código)\b/gi,"").trim()};
     if(/^\/?(pesquisar|pesquisa|buscar|busca)(\s|$)/.test(n)||/\b(busque|buscar|pesquise|pesquisar|procure|na rede|na internet)\b/.test(n))return {type:"research",value:text.replace(/\b(busque|buscar|pesquise|pesquisa|pesquisar|procure|na rede|na internet)\b/gi,"").trim()};
     if(/\b(?:c[oó]digo|script|implementa[cç][aã]o|exemplo)\b/.test(n)&&/\b(?:como|criar|fazer|faca|faça|usar|implementar|exemplo|gera|gerar|preciso|quero|me d[eê]|me entregue)\b/.test(n))return {type:"researchCode",value:text};
     if(/\b(o que e|o que é|como funciona|como faco|como faço|como criar|como usar|explique|explica|por que|por quê|qual a melhor maneira)\b/.test(n))return {type:"question",value:text};
-    if(/\b(crie|criar|gere|gerar|faça|faca|desenvolva|codifique|entregue|me de|me dê|me entregue)\b.*\b(jogo|game|codigo|código|prototipo|protótipo)\b/.test(n))return {type:"generate"};
     return {type:"fallback",value:text};
   }
 

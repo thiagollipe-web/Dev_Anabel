@@ -96,7 +96,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       "ANABEL: bot local sem LLM.",
       "ANABEL: conhecimento, regras, pesquisa e ferramentas ativas."
     ],
-    sourceList:[],snapshots:[],ideas:[],selectedIdea:null
+    sourceList:[],snapshots:[],ideas:[],selectedIdea:null,pendingAction:null
   };
 
   const norm=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
@@ -351,6 +351,11 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     log("ANÁLISE: var="+result.varCount+" · console.log="+result.logCount+" · function="+result.functionCount+" · arrow="+result.arrowCount+" · fetch="+result.fetchCount);
     if(result.fetchCount)log("DICA: confira response.ok, tratamento de erros e CORS.");
     if(/\bawait\b/.test(m))log("DICA: código assíncrono encontrado; considere try/catch.");
+    if(result.varCount)log("PERGUNTA DE ESCOPO: esta variável precisa existir fora do bloco onde foi criada?");
+    if(result.fetchCount)log("PERGUNTA DE ASSINCRONISMO: o que deve acontecer quando a rede falhar ou responder devagar?");
+    if(/\bArray\b|\bObject\b|\bMap\b|\bSet\b/.test(m))log("PERGUNTA DE ESTRUTURA: você precisa preservar ordem, buscar por chave ou impedir duplicidades?");
+    state.pendingAction=(result.varCount||result.logCount||result.functionCount>result.arrowCount)?{type:"refactor"}:null;
+    if(state.pendingAction)log("ANABEL: posso aplicar as correções básicas. Responda sim, s, yes, go ou ok.");
     if(!result.varCount&&!result.logCount&&!result.fetchCount)log("DICA: nenhum dos padrões básicos conhecidos foi encontrado.");
     return result;
   }

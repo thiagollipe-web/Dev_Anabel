@@ -64,8 +64,20 @@ const base=await page.evaluate(()=>({
   noLlm:![...document.scripts].some(s=>/openai|anthropic|gemini|ollama|qwen|gemma/i.test(s.textContent))
 }));
 
-if(base.selftest!=="SELFTEST: 17/17 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest);
+if(base.selftest!=="SELFTEST: 19/19 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest);
 if(base.mobileTabs!==3||base.mobilePad!==3||base.sandbox!=="allow-scripts"||!base.dom||!base.noLlm) throw new Error("Estrutura básica inválida");
+
+const pythonEditor=await page.evaluate(()=>{
+  const e=document.querySelector("#editor");
+  e.value="def soma(a, b):\n    return a + b\n\npri";
+  e.selectionStart=e.selectionEnd=e.value.length;
+  e.dispatchEvent(new Event("input",{bubbles:true}));
+  const suggestionBox=document.querySelector("#autocomplete");
+  const meta=document.querySelector("#editor-meta")?.textContent||"";
+  e.dispatchEvent(new KeyboardEvent("keydown",{key:" ",code:"Space",ctrlKey:true,bubbles:true}));
+  return {python:window.DevAnabel.intent("explique Python").type==="question",meta,suggestions:suggestionBox?.textContent||"",visible:suggestionBox?.classList.contains("show")};
+});
+if(!pythonEditor.python||!pythonEditor.meta.includes("PYTHON")||!pythonEditor.visible||!pythonEditor.suggestions.includes("print")) throw new Error("Autocomplete Python não foi inicializado corretamente");
 
 const intent=await page.evaluate(()=>[
   window.DevAnabel.intent("analise meu codigo").type,

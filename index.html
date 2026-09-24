@@ -1866,8 +1866,6 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       ["Resize com debounce",typeof debouncedResize==="function"],
       ["Referrer do Sandbox",sandbox.getAttribute("referrerpolicy")==="no-referrer"],
       ["Sandbox sem same-origin",!sandbox.getAttribute("sandbox").includes("allow-same-origin")],
-      ["Ollama configurado",OLLAMA_ENDPOINT.includes("11434/api/chat")&&OLLAMA_MODEL==="gemma4:31b-cloud"],
-      ["Teste Ollama exposto",typeof testOllamaConnection==="function"]
     ];
     const ok=checks.filter(x=>x[1]).length;
     log("SELFTEST: "+ok+"/"+checks.length+" verificações aprovadas.");

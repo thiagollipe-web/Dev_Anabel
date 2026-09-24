@@ -85,7 +85,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
 "use strict";
 (()=> {
   const $=(s,r=document)=>r.querySelector(s);
-  const $=(s,r=document)=>[...r.querySelectorAll(s)];
+  const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
   const canvas=$("#terminal"),ctx=canvas.getContext("2d",{alpha:false});
   const editor=$("#editor"),sandbox=$("#sandbox"),input=$("#input"),send=$("#send");
   const fileInput=$("#file-input"),sources=$("#sources"),status=$("#status");

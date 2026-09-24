@@ -173,7 +173,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   function pythonRuntimeHTML(){
     const pyodideCdn="https://cdn.jsdelivr.net/pyodide/v314.0.7/full/";
     const boot=`(async()=>{const state=document.getElementById("state"),out=document.getElementById("out"),NL=String.fromCharCode(10);let pyodide=null;function send(type,data){parent.postMessage(Object.assign({source:"dev-anabel-python",type:type},data||{}),"*")}function emit(kind,value){const s=String(value==null?"":value);if(s)out.textContent+=s;send("output",{kind:kind,text:s})}function loadScript(src){return new Promise(function(resolve,reject){const s=document.createElement("script");s.src=src;s.onload=resolve;s.onerror=reject;document.head.appendChild(s)})}try{await loadScript("${pyodideCdn}pyodide.js");pyodide=await loadPyodide({indexURL:"${pyodideCdn}"});pyodide.setStdout({batched:function(s){emit("stdout",s)}});pyodide.setStderr({batched:function(s){emit("stderr",s)}});state.textContent="PYTHON: ambiente pronto";send("ready",{version:String(pyodide.runPython("import sys;sys.version"))})}catch(err){state.textContent="PYTHON: falha ao inicializar";send("error",{error:String(err)})}window.addEventListener("message",async function(e){const d=e.data||{};if(d.source!=="dev-anabel-python"||!pyodide||d.action!=="run")return;state.textContent="PYTHON: executando…";try{await pyodide.loadPackagesFromImports(String(d.code||""));const result=await pyodide.runPythonAsync(String(d.code||""));if(result!==undefined&&result!==null)emit("result",String(result)+NL);send("done",{ok:true})}catch(err){emit("stderr",String(err)+NL);send("done",{ok:false,error:String(err)})}state.textContent="PYTHON: pronto"})})()`;
-    const safeBoot=boot.replace(/<\\/script/gi,"<\\\\/script");
+    const safeBoot=boot;
     return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Python Runtime</title><style>body{margin:0;background:#000;color:#00ff33;font:12px monospace;padding:10px}#state{border:1px solid #333;padding:7px;margin-bottom:8px}pre{white-space:pre-wrap;margin:0;border:1px solid #333;background:#050505;padding:10px;min-height:220px;overflow:auto}</style></head><body><div id="state">PYTHON: carregando…</div><pre id="out"></pre><script>'+safeBoot+'<\\/script></body></html>';
   }
   function postPython(action,code){
@@ -316,6 +316,36 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     {keys:["pip python","instalar pacote python"],title:"pip / pacotes",text:"No ambiente web, imports compatíveis podem ser carregados automaticamente pelo Pyodide.",example:"import numpy as np; print(np.arange(5))",tip:"Pacotes nativos precisam de uma versão compatível com Pyodide.",url:"https://pyodide.org/en/stable/usage/loading-packages.html",source:"Pyodide — Loading packages"},
     {keys:["try except python","tratamento erro python"],title:"try / except",text:"try/except trata exceções sem encerrar o fluxo.",example:"try: valor=int(entrada)",tip:"Capture exceções específicas.",url:"https://docs.python.org/3/tutorial/errors.html",source:"Python — Errors and Exceptions"},
     {keys:["import python","modulo python","módulo python"],title:"import",text:"import carrega módulos e nomes disponíveis no ambiente.",example:"import math; print(math.sqrt(25))",tip:"Evite imports com *.",url:"https://docs.python.org/3/reference/import.html",source:"Python — import system"}
+
+  const PY_KEYWORDS=["and","as","assert","async","await","break","case","class","continue","def","del","elif","else","except","False","finally","for","from","global","if","import","in","is","lambda","match","None","nonlocal","not","or","pass","raise","return","True","try","while","with","yield"];
+  const PY_BUILTINS=["abs","all","any","bool","dict","dir","enumerate","filter","float","input","int","isinstance","len","list","map","max","min","open","print","range","reversed","round","set","sorted","str","sum","tuple","type","zip","__name__"];
+  const PY_MODULES=["asyncio","collections","datetime","functools","json","math","os","random","re","statistics","time","typing","urllib","pathlib","numpy","pandas","matplotlib"];
+  const PY_METHODS={
+    str:["upper","lower","strip","split","replace","startswith","endswith","find","join","format"],
+    list:["append","extend","insert","remove","pop","clear","index","count","sort","reverse","copy"],
+    dict:["get","keys","values","items","update","pop","setdefault","clear"],
+    set:["add","remove","discard","pop","clear","union","intersection","difference"],
+    math:["sqrt","sin","cos","tan","floor","ceil","pi","e"],
+    random:["random","randint","choice","choices","shuffle","sample"],
+    os:["getcwd","listdir","mkdir","remove","path"],
+    json:["loads","dumps","load","dump"],
+    re:["search","match","findall","sub","split","compile"],
+    pathlib:["Path"]
+  };
+  const PY_SIGNATURES={
+    print:"print(*objects, sep=' ', end='\\n', file=None, flush=False)",
+    len:"len(obj)",
+    range:"range(start, stop[, step])",
+    enumerate:"enumerate(iterable, start=0)",
+    zip:"zip(*iterables)",
+    str:"str(object='')",
+    int:"int(x=0, base=10)",
+    float:"float(x=0)",
+    list:"list(iterable=())",
+    dict:"dict(**kwargs)",
+    sorted:"sorted(iterable, *, key=None, reverse=False)",
+    sum:"sum(iterable, /, start=0)"
+  };
 
   const IDEAS=[
     {title:"Reino dos 16 Turnos",pitch:"Transforme uma vila em um reino em 16 turnos; economia, população, defesa e expansão disputam o mesmo orçamento.",mechanics:["recursos","território","defesa","eventos","16 turnos"]},

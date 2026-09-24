@@ -49,3 +49,6 @@ A tradução de pequenos trechos usa uma tentativa de serviço externo e possui 
 A URL `?selftest=1` executa verificações internas.
 
 O repositório também possui testes automatizados via GitHub Actions.
+
+
+<!-- CI verification branch -->

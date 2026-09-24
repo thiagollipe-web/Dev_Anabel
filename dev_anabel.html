@@ -96,7 +96,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       "ANABEL: bot local sem LLM.",
       "ANABEL: conhecimento, regras, pesquisa e ferramentas ativas."
     ],
-    sourceList:[],snapshots:[],ideas:[],selectedIdea:null
+    sourceList:[],snapshots:[],ideas:[],selectedIdea:null,pendingAction:null
   };
 
   const norm=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
@@ -351,6 +351,11 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     log("ANÁLISE: var="+result.varCount+" · console.log="+result.logCount+" · function="+result.functionCount+" · arrow="+result.arrowCount+" · fetch="+result.fetchCount);
     if(result.fetchCount)log("DICA: confira response.ok, tratamento de erros e CORS.");
     if(/\bawait\b/.test(m))log("DICA: código assíncrono encontrado; considere try/catch.");
+    if(result.varCount)log("PERGUNTA DE ESCOPO: esta variável precisa existir fora do bloco onde foi criada?");
+    if(result.fetchCount)log("PERGUNTA DE ASSINCRONISMO: o que deve acontecer quando a rede falhar ou responder devagar?");
+    if(/\bArray\b|\bObject\b|\bMap\b|\bSet\b/.test(m))log("PERGUNTA DE ESTRUTURA: você precisa preservar ordem, buscar por chave ou impedir duplicidades?");
+    state.pendingAction=(result.varCount||result.logCount||result.functionCount>result.arrowCount)?{type:"refactor"}:null;
+    if(state.pendingAction)log("ANABEL: posso aplicar as correções básicas. Responda sim, s, yes, go ou ok.");
     if(!result.varCount&&!result.logCount&&!result.fetchCount)log("DICA: nenhum dos padrões básicos conhecidos foi encontrado.");
     return result;
   }
@@ -456,7 +461,10 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(/^\/?(ajuda|help|comandos)(\s|$)/.test(n))return {type:"help"};
     if(/^\/?(fontes?|source)(\s|$)/.test(n))return {type:"sources"};
     if(/^\/?(desfazer|undo|voltar)(\s|$)/.test(n))return {type:"undo"};
+    if(/^(sim|s|yes|y|go|ok|okay|pode|manda|confirmo)$/.test(n)||/^(nao|não|n|no|cancelar|cancelo)$/.test(n))return {type:"confirm",value:n};
     if(/^\/?(executar|rodar|run|play)(\s|$)/.test(n))return {type:"run"};
+    if(/^\/?dica(\s|$)/.test(n)||/\bdica\b.*\b(codigo|código|erro|programacao|programação)\b/.test(n))return {type:"tip"};
+    if(/\bspace\s*invaders?\b|\binvaders?\b/.test(n))return {type:"space"};
     if(/^\/?(analisar|analise|audit|diagnostico)(\s|$)/.test(n)||/\b(analisar|analise|audit|diagnostico)\b.*\b(codigo|editor)\b/.test(n))return {type:"analyze"};
     if(/^\/?(refatorar|modernizar|otimizar)(\s|$)/.test(n)||/console\.log|\bvar\b.*\blet\b|arrow function/.test(n))return {type:"refactor"};
     const select=n.match(/\b(?:ideia|opcao|opção)\s*([1-5])\b/)||n.match(/\b(?:gostei|escolho|quero)\b.*\b([1-5])\b/);
@@ -466,6 +474,28 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(/\b(o que e|o que é|como funciona|como faco|como faço|como criar|como usar|explique|explica|por que|por quê|qual a melhor maneira)\b/.test(n))return {type:"question",value:text};
     if(/\b(crie|criar|gere|gerar|faça|faca|desenvolva|codifique|entregue|me de|me dê|me entregue)\b.*\b(jogo|game|codigo|código|prototipo|protótipo)\b/.test(n))return {type:"generate"};
     return {type:"fallback",value:text};
+  }
+
+  function applyPending(text){
+    const n=norm(text);
+    if(!state.pendingAction){log("ANABEL: não há nenhuma ação aguardando aprovação.");return;}
+    if(/^(nao|não|n|no|cancelar|cancelo)$/.test(n)){state.pendingAction=null;log("ANABEL: ação cancelada.");return;}
+    if(/^(sim|s|yes|y|go|ok|okay|pode|manda|confirmo)$/.test(n)){
+      const action=state.pendingAction;state.pendingAction=null;
+      if(action.type==="refactor")refactor();
+      else if(action.type==="run")run(editor.value);
+      return;
+    }
+    log("ANABEL: responda sim, s, yes, go, ok ou não.");
+  }
+
+  function contextualTip(){
+    const m=mask(editor.value);
+    if(!m.trim()){log("DICA: escreva ou anexe um código para receber uma dica contextual.");return;}
+    if(/\bfetch\s*\(/.test(m)){log("DICA: trate response.ok, erros de rede e CORS.");addSource({kind:"DICA",title:"MDN — Fetch API",url:"https://developer.mozilla.org/docs/Web/API/Window/fetch",note:"Referência da Fetch API."});return;}
+    if(/getContext\s*\(\s*["']2d["']\)/.test(m)){log("DICA: para animações, prefira requestAnimationFrame.");addSource({kind:"DICA",title:"MDN — requestAnimationFrame",url:"https://developer.mozilla.org/docs/Web/API/Window/requestAnimationFrame",note:"Referência de animação."});return;}
+    if(/\b(Array|Object|Map|Set)\b/.test(m)){log("DICA: escolha a estrutura pelos padrões de acesso: ordem, chave ou unicidade.");addSource({kind:"DICA",title:"MDN — JavaScript data structures",url:"https://developer.mozilla.org/docs/Web/JavaScript/Data_structures",note:"Referência de estruturas de dados."});return;}
+    log("DICA: mantenha cada função com uma responsabilidade clara e valide entradas.");
   }
 
   async function handleCommand(text){
@@ -484,7 +514,10 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     }
 
     if(i.type==="undo"){undo();return;}
+    if(i.type==="confirm"){applyPending(i.value);return;}
     if(i.type==="run"){run(editor.value);return;}
+    if(i.type==="tip"){contextualTip();return;}
+    if(i.type==="space"){editor.value=spaceGame();log("ANABEL: Space Invaders carregado no editor.");switchTab(1);return;}
     if(i.type==="analyze"){analyze();return;}
     if(i.type==="refactor"){refactor();return;}
     if(i.type==="url"){await loadUrl(i.value);return;}
@@ -542,6 +575,8 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       ["Intent: pergunta",intent("como criar um jogo").type==="question"],
       ["Intent: ideias",intent("Anabel quero uma dica de jogo de estrategia").type==="ideas"],
       ["Intent: pesquisa",intent("/pesquisar Canvas").type==="research"],
+      ["Intent: Space Invaders",intent("crie space invaders").type==="space"],
+      ["Intent: aprovação",intent("sim").type==="confirm"],
       ["Intent: URL",intent("https://example.com/test.html").type==="url"],
       ["Intent: código",intent("me dê o código").type==="generate"],
       ["var→let",refactorVar("var x=1;").code.includes("let x")],

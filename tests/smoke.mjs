@@ -67,17 +67,18 @@ const base=await page.evaluate(()=>({
 if(base.selftest!=="SELFTEST: 20/20 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest);
 if(base.mobileTabs!==3||base.mobilePad!==3||base.sandbox!=="allow-scripts"||!base.dom||!base.noLlm) throw new Error("Estrutura básica inválida");
 
-const runtimeTest=await page.evaluate(async()=>{
-  window.DevAnabel.run('document.body.innerHTML="<h1 id="\'exec-ok\'">EXECUÇÃO OK</h1>"; console.log("EXEC_OK");');
-  return new Promise(resolve=>{
-    const frame=document.querySelector("#sandbox");
-    frame.addEventListener("load",async()=>{
-      const text=frame.contentDocument?.body?.innerText||"";
-      resolve({text,src:frame.src});
-    },{once:true});
+const runtimeTest=await page.evaluate(()=>new Promise(resolve=>{
+  const timer=setTimeout(()=>resolve({ok:false,text:"",src:document.querySelector("#sandbox").src}),4000);
+  addEventListener("message",function handler(e){
+    const d=e.data||{};
+    if(d.source!=="dev-anabel-runtime"||d.type!=="log"||d.text!=="EXEC_OK")return;
+    clearTimeout(timer);
+    removeEventListener("message",handler);
+    resolve({ok:true,text:d.text,src:document.querySelector("#sandbox").src});
   });
-});
-if(!runtimeTest.text.includes("EXECUÇÃO OK")||!runtimeTest.src.startsWith("blob:")) throw new Error("JavaScript puro não foi executado no Sandbox");
+  window.DevAnabel.run('console.log("EXEC_OK");');
+}));
+if(!runtimeTest.ok||!runtimeTest.src.startsWith("blob:")) throw new Error("JavaScript puro não foi executado no Sandbox");
 
 const pythonEditor=await page.evaluate(()=>{
   const e=document.querySelector("#editor");

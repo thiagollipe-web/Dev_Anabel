@@ -20,7 +20,6 @@ const routes=[
   ["https://api.stackexchange.com/**",{items:[{title:"Como usar Canvas",link:"https://pt.stackoverflow.com/q/1",tags:["javascript","canvas"]}]}],
   ["https://api.github.com/search/repositories**",{items:[{full_name:"test/canvas",html_url:"https://github.com/test/canvas",description:"Canvas test",stargazers_count:42}]}],
   ["https://raw.githubusercontent.com/**",{body:"const remoto = 7;"}],
-  ["https://raw.githubusercontent.com/**",{body:"const remoto = 7;"}],
   ["https://api.mymemory.translated.net/**",{responseData:{translatedText:"Uma função é um bloco reutilizável de código."}}]
 ];
 
@@ -65,6 +64,13 @@ if(!ref.value.includes("let x=1;")||ref.value.includes("console.log")||!ref.valu
 await page.evaluate(()=>window.DevAnabel.undo());
 const undone=await page.evaluate(()=>document.querySelector("#editor").value);
 if(undone!=='var x=1;\nconsole.log(x);\nconst f = function(a) { return a+1; };\nconst txt="var y";') throw new Error("Undo falhou");
+
+await page.evaluate(()=>window.DevAnabel.analyze());
+await page.locator("#input").fill("sim");
+await page.locator("#send").click();
+await page.waitForTimeout(150);
+const approval=await page.evaluate(()=>({pending:window.DevAnabel.state.pendingAction,value:document.querySelector("#editor").value}));
+if(approval.pending||approval.value.includes("var x=1;")||approval.value.includes("console.log")) throw new Error("Aprovação de correção falhou");
 
 await page.evaluate(()=>window.DevAnabel.ideas("jogo estratégia 8-bit"));
 await page.waitForTimeout(100);

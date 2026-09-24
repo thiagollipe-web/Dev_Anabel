@@ -120,6 +120,21 @@ const ref=await page.evaluate(()=>{
 if(ref.result.varCount!==1||ref.result.logCount!==1||ref.result.arrowCount!==1) throw new Error("Contagem da refatoração inválida");
 if(!ref.value.includes("let x=1;")||ref.value.includes("console.log")||!ref.value.includes("const f = (a) => a+1;")||!ref.value.includes('const txt="var y"')) throw new Error("Refatoração produziu resultado incorreto");
 
+const autoFix=await page.evaluate(async()=>{
+  const e=document.querySelector("#editor");
+  e.value='var x=1;\nconsole.log(x);\nconst f = function(a) { return a+1; };\nconst canvas=document.createElement("canvas");\nconst ctx=canvas.getContext("2d");\nasync function carregar(){\n  await Promise.resolve(1);\n}';
+  const result=await window.DevAnabel.autoFixSystem();
+  return {result,value:e.value,summary:document.querySelector("#review-summary")?.textContent||"",suggestions:[...document.querySelectorAll("#review-list li")].map(x=>x.textContent),history:window.DevAnabel.state.history.filter(x=>x.includes("Consertando")||x.includes("AUTO-FIX"))};
+});
+if(autoFix.result.applied.length<5) throw new Error("Auto-correção não aplicou a cadeia esperada: "+JSON.stringify(autoFix.result));
+if(!autoFix.value.includes("let x=1;")||autoFix.value.includes("console.log(x);")||!autoFix.value.includes("const f = (a) => a+1;")||!autoFix.value.includes("devicePixelRatio")||!autoFix.value.includes("try {")) {
+  throw new Error("Auto-correção não produziu as correções esperadas: "+autoFix.value);
+}
+if(!autoFix.summary.includes("correção")||autoFix.suggestions.length<4||autoFix.history.length<5) {
+  throw new Error("Feedback de auto-correção incompleto: "+JSON.stringify(autoFix));
+}
+
+
 await page.evaluate(()=>window.DevAnabel.undo());
 const undone=await page.evaluate(()=>document.querySelector("#editor").value);
 if(undone!=='var x=1;\nconsole.log(x);\nconst f = function(a) { return a+1; };\nconst txt="var y";') throw new Error("Undo falhou");

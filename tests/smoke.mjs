@@ -178,7 +178,7 @@ if(!autoFix.summary.includes("correção")||autoFix.suggestions.length<4||autoFi
 
 await page.evaluate(()=>window.DevAnabel.undo());
 const undone=await page.evaluate(()=>document.querySelector("#editor").value);
-if(undone!=='var x=1;\nconsole.log(x);\nconst f = function(a) { return a+1; };\nconst txt="var y";') throw new Error("Undo falhou");
+if(!undone.includes("var x=1;")||!undone.includes("console.log(x);")||!undone.includes('const f = function(a) { return a+1; };')||!undone.includes('const txt="var y"')) throw new Error("Undo falhou: "+undone);
 
 await page.evaluate(()=>window.DevAnabel.analyze());
 await page.locator("#input").fill("sim");

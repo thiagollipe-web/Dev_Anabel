@@ -640,10 +640,10 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     result.forEach((r,i)=>{
       if(r.status!=="fulfilled")return;
       const kind=urls[i][0],data=r.value;
-      const items=kind==="WIKIPEDIA"?(data.pages||[]).map(x=>({title:x.title||x.key,url:x.content_urls?.desktop?.page||("https://pt.wikipedia.org/wiki/"+encodeURIComponent(x.key||x.title)),note:x.description||""})):
-        kind==="STACKOVERFLOW"?(data.items||[]).map(x=>({title:x.title,url:x.link,note:(x.tags||[]).join(", ")})):
-        (data.items||[]).map(x=>({title:x.full_name,url:x.html_url,note:(x.stargazers_count||0)+" stars · "+(x.description||"sem descrição")}));
-      items.forEach(x=>{if(x.url&&!seen.has(x.url)){seen.add(x.url);found.push({kind,title:x.title,url:x.url,note:x.note});}});
+      const items=kind==="WIKIPEDIA"?(data.pages||[]).map(x=>({title:x.title||x.key,url:x.content_urls?.desktop?.page||("https://pt.wikipedia.org/wiki/"+encodeURIComponent(x.key||x.title)),note:x.description||"",kind})):
+        kind==="STACKOVERFLOW"?(data.items||[]).map(x=>({title:x.title,url:x.link,note:(x.tags||[]).join(", "),kind})):
+        (data.items||[]).map(x=>({title:x.full_name,url:x.html_url,note:(x.stargazers_count||0)+" stars · "+(x.description||"sem descrição"),kind}));
+      items.forEach(x=>{if(x.url&&!seen.has(x.url)){seen.add(x.url);found.push(x);}});
     });
     found.slice(0,10).forEach(addSource);
     log("ANABEL: pesquisa concluída → "+Math.min(found.length,10)+" referência(s).");
@@ -651,77 +651,164 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     return found.slice(0,10);
   }
 
-  function codeQualityScore(code,language){
-    const s=String(code||"");
-    const m=mask(s);
-    let score=Math.min(25,Math.floor(s.length/80));
-    const reasons=[];
-    if(s.length>=160){score+=8;reasons.push("completude");}
-    if(/function\s+\w+|=>|\bdef\s+\w+/.test(m)){score+=10;reasons.push("estrutura modular");}
-    if(/try\s*\{|try:|catch\s*\(|response\.ok|throw\s+/.test(m)){score+=8;reasons.push("tratamento de erros");}
-    if(/addEventListener|requestAnimationFrame|async\s+|await\s+/.test(m)){score+=6;reasons.push("eventos/fluxo assíncrono");}
-    if(/\bconst\b|\blet\b|===|!==/.test(m)){score+=5;reasons.push("sintaxe moderna");}
-    if(/aria-|textContent\s*=|createElement\(/.test(m)){score+=4;reasons.push("integração DOM");}
-    if(/getContext\(|canvas|fillRect|drawImage/.test(m)){score+=4;reasons.push("Canvas");}
-    if(/\/\*|\/\/|#\s|'''|"""/.test(s)){score+=3;reasons.push("documentação");}
-    if(/eval\(|new\s+Function\(|document\.write\(/.test(m)){score-=12;reasons.push("padrão inseguro/legado");}
-    if(/\bvar\b|console\.log\s*\(/.test(m)){score-=3;reasons.push("debug/legado");}
-    if(language==="python"&&/import\s+(requests|numpy|pandas|pygame)/.test(m)){score+=3;reasons.push("biblioteca Python");}
-    return {score,reasons:[...new Set(reasons)]};
+  function cleanSearchTopic(query){
+    let q=String(query||"").replace(/\s+/g," ").trim();
+    q=q.replace(/^(anabel[\s,:-]*)/i,"");
+    q=q.replace(/\b(?:procure|encontre|busque|ache|pesquise|pesquisar|buscar|busca)\b/gi," ");
+    q=q.replace(/\b(?:me\s+)?(?:de|dê|traga|entregue|entregar|mostre|mostre-me)\b/gi," ");
+    q=q.replace(/\b(?:um|uma|o|a)\s+(?:codigo|código|script|exemplo)\b/gi," ");
+    q=q.replace(/\s+/g," ").trim();
+    return q||String(query||"").trim();
   }
-  function searchVariations(query){
-    const q=String(query||"").trim().replace(/\s+/g," ");
-    return [...new Set([q,q+" example code",q+" github repository",q+" implementation javascript"])].filter(Boolean).slice(0,4);
+
+  function inferSearchLanguage(query){
+    const n=norm(query);
+    if(/\bpython\b|\bpyodide\b|\bdjango\b|\bflask\b|\bpandas\b|\bnumpy\b/.test(n))return "python";
+    if(/\btypescript\b|\btsx\b/.test(n))return "typescript";
+    if(/\bjavascript\b|\bjs\b|\bnode(?:\.js)?\b|\bcanvas\b|\bdom\b/.test(n))return "javascript";
+    if(/\bcss\b|\bstylesheet\b/.test(n))return "css";
+    if(/\bhtml\b|\bweb\b|\bfrontend\b/.test(n))return "html";
+    return "";
   }
-  function inferSearchTopic(code,reason){
-    const n=norm(String(code||"")+" "+String(reason||""));
-    if(/cors|cross.?origin/.test(n))return "JavaScript CORS error solution";
-    if(/failed to fetch|fetch|network/.test(n))return "JavaScript fetch error handling";
-    if(/canvas|getcontext|requestanimationframe/.test(n))return "JavaScript Canvas game example";
-    if(/pyodide|python/.test(n))return "Python browser Pyodide example";
-    if(/dom|queryselector|eventlistener|touch/.test(n))return "JavaScript DOM events example";
-    if(/syntaxerror|unexpected token|referenceerror|typeerror/.test(n))return "JavaScript runtime error solution";
-    if(/game|jogo|sprite|player|enemy|score/.test(n))return "JavaScript 2D game implementation";
-    return "JavaScript implementation example";
+
+  function buildSearchPlan(query){
+    const topic=cleanSearchTopic(query);
+    const language=inferSearchLanguage(topic);
+    const languageHint=language?language+" ":"";
+    const terms=[topic];
+    if(language)terms.push(topic+" example implementation "+language);
+    else terms.push(topic+" example implementation");
+    terms.push(topic+" github repository");
+    terms.push(topic+" documentation "+languageHint+"guide".replace(/\s+/g," ").trim());
+    return {
+      topic,
+      language,
+      terms:[...new Set(terms.map(x=>x.replace(/\s+/g," ").trim()))].filter(Boolean).slice(0,4),
+      sources:["GITHUB","STACKOVERFLOW","DOCS"]
+    };
   }
-  function documentationRefs(query){
-    const n=norm(query),docs=[];
-    if(/canvas|getcontext|drawimage|requestanimationframe/.test(n))docs.push({
-      kind:"MDN",
-      title:"MDN — Canvas 2D",
-      url:"https://developer.mozilla.org/pt-BR/docs/Web/API/CanvasRenderingContext2D",
-      note:"Documentação oficial da API Canvas 2D."
+
+  async function documentationSearch(query){
+    const q=String(query||"").trim();
+    if(!q)return [];
+    const searchPages=[
+      "https://developer.mozilla.org/pt-BR/search?q="+encodeURIComponent(q),
+      "https://docs.python.org/pt-br/3/search.html?q="+encodeURIComponent(q)
+    ];
+    const out=[];
+    const seen=new Set();
+    const add=(x)=>{
+      if(!x?.url||seen.has(x.url))return;
+      seen.add(x.url);
+      out.push({...x,kind:"DOCS"});
+    };
+    const pages=await Promise.allSettled(searchPages.map(url=>readWebPage(url,{timeout:10000})));
+    pages.forEach((r,i)=>{
+      if(r.status!=="fulfilled")return;
+      const text=String(r.value.text||"");
+      const patterns=[
+        /https:\/\/developer\.mozilla\.org\/(?:pt-BR|en-US)\/docs\/[A-Za-z0-9_~:/?#[\]@!$&'()*+,;=%.-]+/gi,
+        /https:\/\/docs\.python\.org\/(?:pt-br|3)\/[A-Za-z0-9_~:/?#[\]@!$&'()*+,;=%.-]+/gi
+      ];
+      for(const re of patterns){
+        const matches=text.match(re)||[];
+        matches.forEach(url=>{
+          add({
+            title:(url.split("/").filter(Boolean).pop()||"Documentação").replace(/[-_]/g," "),
+            url:url.replace(/[),.;]+$/,""),
+            note:i===0?"Documentação MDN encontrada pela busca online.":"Documentação Python encontrada pela busca online."
+          });
+        });
+      }
     });
-    if(/fetch|http|rede|network/.test(n))docs.push({
-      kind:"MDN",
-      title:"MDN — Fetch API",
-      url:"https://developer.mozilla.org/pt-BR/docs/Web/API/Window/fetch",
-      note:"Documentação oficial da Fetch API."
-    });
-    if(/cors|cross.?origin/.test(n))docs.push({
-      kind:"MDN",
-      title:"MDN — CORS",
-      url:"https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Guides/CORS",
-      note:"Documentação oficial sobre CORS."
-    });
-    if(/dom|queryselector|event|touch/.test(n))docs.push({
-      kind:"MDN",
-      title:"MDN — DOM",
-      url:"https://developer.mozilla.org/pt-BR/docs/Web/API/Document_Object_Model",
-      note:"Documentação oficial do DOM."
-    });
-    if(/python|pyodide/.test(n))docs.push({
-      kind:"PYTHON",
-      title:"Python — Documentação oficial",
-      url:"https://docs.python.org/pt-br/3/",
-      note:"Documentação oficial da linguagem Python."
-    });
-    return docs;
+    documentationRefs(q).forEach(add);
+    return out.slice(0,8);
+  }
+
+  async function searchSource(term,source){
+    const q=String(term||"").trim();
+    if(!q)return [];
+    if(source==="GITHUB"){
+      try{
+        const data=await httpJson("https://api.github.com/search/repositories?q="+encodeURIComponent(q)+"&per_page=5&sort=stars&order=desc",12000);
+        return (data.items||[]).map(x=>({
+          kind:"GITHUB",
+          title:x.full_name,
+          url:x.html_url,
+          note:(x.stargazers_count||0)+" stars · "+(x.language||"sem linguagem")+" · "+(x.description||"sem descrição")
+        })).filter(x=>x.url);
+      }catch(e){return [];}
+    }
+    if(source==="STACKOVERFLOW"){
+      try{
+        const data=await httpJson("https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=relevance&q="+encodeURIComponent(q)+"&site=stackoverflow&pagesize=5&filter=default",12000);
+        return (data.items||[]).map(x=>({
+          kind:"STACKOVERFLOW",
+          title:x.title,
+          url:x.link,
+          note:(x.tags||[]).join(", ")
+        })).filter(x=>x.url);
+      }catch(e){return [];}
+    }
+    return await documentationSearch(q);
+  }
+
+  function sourceWeight(kind,url=""){
+    const k=String(kind||"").toUpperCase(),u=String(url||"").toLowerCase();
+    if(/developer\.mozilla\.org|docs\.python\.org/.test(u))return 10;
+    if(k==="GITHUB")return 7;
+    if(k==="STACKOVERFLOW")return 5;
+    if(k==="DOCS")return 8;
+    return 0;
+  }
+
+  function candidateScore(candidate,query,plan){
+    const code=String(candidate.code||"");
+    const language=candidate.language||guessCodeLanguage(code,candidate.url);
+    const base=codeQualityScore(code,language);
+    const hay=norm([query,candidate.title,candidate.note,candidate.url].join(" "));
+    const tokens=[...new Set(norm(plan.topic).split(/\s+/).filter(x=>x.length>=3))].slice(0,18);
+    const matched=tokens.filter(x=>hay.includes(x)).length;
+    const codeMatched=tokens.filter(x=>norm(code).includes(x)).length;
+    let score=base.score+sourceWeight(candidate.sourceKind||candidate.kind,candidate.url);
+    score+=Math.min(18,matched*3);
+    score+=Math.min(12,codeMatched*2);
+    if(plan.language&&language===plan.language)score+=8;
+    if(code.length>=300)score+=4;
+    if(code.length>=800)score+=3;
+    if(/README|example|example|tutorial|demo|starter|guide/i.test(String(candidate.title||"")))score+=3;
+    if(/TODO|FIXME|throw new Error|raise\s+\w+/.test(code))score+=2;
+    if(/eval\(|new\s+Function\(|document\.write\(/.test(mask(code)))score-=10;
+    if(/\b(var|print)\b/.test(mask(code))&&language==="javascript")score-=2;
+    return {
+      score:Math.max(0,Math.min(100,Math.round(score))),
+      language,
+      reasons:[...new Set([
+        ...base.reasons,
+        matched?"relevância do termo":"",
+        codeMatched?"conteúdo alinhado ao objetivo":"",
+        plan.language&&language===plan.language?"linguagem compatível":"",
+        sourceWeight(candidate.sourceKind||candidate.kind,candidate.url)>=8?"fonte documental forte":"",
+        code.length>=300?"código suficientemente completo":"",
+        /eval\(|new\s+Function\(|document\.write\(/.test(mask(code))?"padrão inseguro/legado":""
+      ].filter(Boolean))]
+    };
+  }
+
+  function autonomousReport(best,alternatives,refs){
+    const source=best.url?best.url.replace(/^https?:\/\//,"").split("/")[0]:"fonte desconhecida";
+    const reasons=best.reasons?.length?best.reasons.join(", "):"estrutura e completude";
+    reviewSummary.textContent="Agente autônomo: "+best.title+" · score "+best.score+" · fonte "+source+".";
+    reviewList.innerHTML=[
+      "Critérios atendidos: "+reasons+".",
+      "Referências consultadas: "+refs+" · alternativas com código: "+alternatives+".",
+      "A seleção é heurística local; revise dependências, licença e contexto antes de publicar."
+    ].map(esc).map(x=>"<li>"+x+"</li>").join("");
   }
 
   async function autonomousSearch(query,reason="objetivo do usuário"){
     const q=String(query||"").trim();
-    if(!q||autonomousBusy)return false;
+    if(!q||autonomousBusy||state.autonomous.enabled===false)return false;
     const key=norm(q)+"|"+norm(reason);
     if(state.autonomousLastKey===key&&Date.now()-state.autonomous.lastAt<15000)return false;
     autonomousBusy=true;
@@ -729,71 +816,117 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     state.autonomous.lastAt=Date.now();
     state.autonomous.lastQuery=q;
     state.autonomous.lastReason=reason;
-    status.textContent="AGENTE AUTÔNOMO: pesquisando…";
+    state.autonomous.candidateCount=0;
+    state.autonomous.selected="";
+    state.autonomous.score=0;
+    state.autonomous.alternatives=[];
+    status.textContent="AGENTE AUTÔNOMO: analisando objetivo…";
     log("ANABEL: INICIANDO MODO AUTÔNOMO.");
-    log("ANABEL: objetivo → "+q);
-    const terms=searchVariations(q);
+    const plan=buildSearchPlan(q);
+    state.autonomous.plan=plan;
+    log("ANABEL: objetivo normalizado → "+plan.topic);
+    log("ANABEL: estratégia → "+plan.terms.join(" | "));
+    log("ANABEL: fontes → GitHub + Stack Overflow + Documentação.");
     try{
-      log("ANABEL: "+terms.length+" estratégias de busca em paralelo.");
-      const batches=await Promise.allSettled(terms.map(term=>research(term)));
+      const jobs=[];
+      for(const term of plan.terms){
+        for(const source of plan.sources)jobs.push(Promise.resolve().then(()=>searchSource(term,source)));
+      }
+      const searchResults=await Promise.allSettled(jobs);
       const refs=[],seen=new Set();
-      batches.forEach(r=>{
+      searchResults.forEach(r=>{
         if(r.status!=="fulfilled")return;
         (r.value||[]).forEach(ref=>{
-          if(ref?.url&&!seen.has(ref.url)){seen.add(ref.url);refs.push(ref);}
+          if(ref?.url&&!seen.has(ref.url)){
+            seen.add(ref.url);
+            refs.push(ref);
+            addSource(ref);
+          }
         });
       });
-      const docs=documentationRefs(q);
-      docs.forEach(ref=>{
-        if(!refs.some(x=>x.url===ref.url)){refs.push(ref);addSource(ref);}
-      });
-      log("ANABEL: "+refs.length+" referências distintas para leitura, incluindo documentação técnica.");
-      const pages=await Promise.allSettled(refs.slice(0,16).map(async ref=>{
+      log("ANABEL: varredura concluída → "+refs.length+" referências distintas.");
+      if(!refs.length){
+        status.textContent="Agente: nenhuma referência encontrada.";
+        log("ANABEL: nenhuma fonte respondeu com resultados utilizáveis.");
+        return false;
+      }
+
+      const targets=refs.slice(0,15);
+      log("ANABEL: lendo "+targets.length+" referências selecionadas.");
+      const pages=await Promise.allSettled(targets.map(async ref=>{
         const out=[];
         if(ref.kind==="GITHUB"){
           try{out.push(...await readGithubRepoCode(ref.url));}catch(e){}
         }
-        try{
-          const page=await readWebPage(ref.url,{timeout:14000});
-          extractCodeBlocks(page.text,ref.url).forEach((b,i)=>{
-            const language=guessCodeLanguage(b.code,ref.url,b.language);
-            const ql=codeQualityScore(b.code,language);
-            out.push({title:ref.title+(i?" · bloco "+(i+1):""),url:ref.url,code:b.code,language,score:ql.score,reasons:ql.reasons});
-          });
-        }catch(e){}
+        if(ref.kind!=="GITHUB"){
+          try{
+            const page=await readWebPage(ref.url,{timeout:14000});
+            extractCodeBlocks(page.text,ref.url).forEach((b,i)=>{
+              const sourceKind=ref.kind==="DOCS"?"DOCS":ref.kind;
+              out.push({
+                title:ref.title+(i?" · bloco "+(i+1):""),
+                url:ref.url,
+                code:b.code,
+                language:guessCodeLanguage(b.code,ref.url,b.language),
+                sourceKind,
+                note:ref.note||""
+              });
+            });
+          }catch(e){}
+        }
         return out;
       }));
       const candidates=[];
       pages.forEach(r=>{if(r.status==="fulfilled")candidates.push(...r.value);});
-      const unique=candidates.filter((x,i,a)=>x.code&&a.findIndex(y=>y.code===x.code)===i);
+      const unique=[];
+      const codeSeen=new Set();
+      for(const candidate of candidates){
+        const normalized=String(candidate.code||"").trim();
+        if(normalized.length<20||codeSeen.has(normalized))continue;
+        codeSeen.add(normalized);
+        const scored=candidateScore({...candidate,code:normalized},q,plan);
+        unique.push({...candidate,code:normalized,language:scored.language,score:scored.score,reasons:scored.reasons});
+      }
       unique.sort((a,b)=>b.score-a.score||b.code.length-a.code.length);
       state.autonomous.candidateCount=unique.length;
+      state.autonomous.alternatives=unique.slice(1,4).map(x=>({title:x.title,url:x.url,score:x.score,language:x.language}));
       if(!unique.length){
-        log("ANABEL: consultei várias fontes, mas nenhum código pôde ser extraído.");
+        log("ANABEL: li várias referências, mas não extraí nenhum código utilizável.");
         status.textContent="Agente: nenhum código extraível.";
         return false;
       }
+
       const best=unique[0];
       state.autonomous.selected=best.title;
       state.autonomous.score=best.score;
       deliverCode(best.code,best.language,best.title,best.url);
-      log("ANABEL: comparei "+unique.length+" candidatos.");
-      log("ANABEL: selecionei → "+best.title);
-      log("ANABEL: motivo → "+(best.reasons.length?best.reasons.join(", "):"completude estrutural")+" · score "+best.score);
-      log("ANABEL: código entregue diretamente no editor.");
-      status.textContent="Agente autônomo concluiu a pesquisa.";
+      autonomousReport(best,state.autonomous.alternatives.length,refs.length);
+      log("ANABEL: comparei "+unique.length+" candidatos de código.");
+      log("ANABEL: seleção → "+best.title);
+      log("ANABEL: critérios → "+best.reasons.join(", "));
+      log("ANABEL: código carregado no editor sem nova confirmação.");
+      status.textContent="Agente autônomo concluiu: código selecionado e entregue.";
       return true;
+    }catch(e){
+      console.error("autonomousSearch:",e);
+      log("ANABEL: o loop autônomo encontrou uma falha, mas preservou o editor.");
+      status.textContent="Agente: falha controlada na pesquisa.";
+      return false;
     }finally{
       autonomousBusy=false;
     }
   }
+
   async function autonomousFileTrigger(file){
     const code=String(file?.code||editor.value||"");
-    if(!code.trim())return;
+    if(!code.trim()||state.autonomous.enabled===false)return;
     const lang=detectLanguage(code);
     const analysis=analyze();
     let reason="";
-    if(lang==="javascript"||lang==="typescript"){
+    if(String(file?.ext||"").toLowerCase()==="json"){
+      try{JSON.parse(code);}catch(e){reason="JSON inválido: "+String(e.message||e);}
+    }
+    if(!reason&&(lang==="javascript"||lang==="typescript")){
       try{new Function(code);}catch(e){reason=String(e.message||e);}
     }
     if(!reason&&analysis?.varCount)reason="uso de var detectado";

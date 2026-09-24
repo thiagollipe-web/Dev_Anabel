@@ -263,12 +263,12 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     while((m=fenced.exec(raw))){
       const language=(m[1]||"").trim().toLowerCase();
       const code=decodeHtmlText(m[2]).trim();
-      if(code.length>=30)blocks.push({language,code});
+      if(code.length>=12)blocks.push({language,code});
     }
     const html=/<pre[^>]*>\s*<code[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi;
     while((m=html.exec(raw))){
       const code=decodeHtmlText(m[1].replace(/<[^>]+>/g,"")).trim();
-      if(code.length>=30)blocks.push({language:"",code});
+      if(code.length>=12)blocks.push({language:"",code});
     }
     if(!blocks.length&&isCodeUrl(url)&&raw.trim().length>=30)blocks.push({language:"",code:raw.trim()});
     return blocks.filter((x,i,a)=>a.findIndex(y=>y.code===x.code)===i).sort((x,y)=>y.code.length-x.code.length).slice(0,8);

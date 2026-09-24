@@ -124,7 +124,7 @@ if(!pythonEditor.python||!pythonEditor.meta.includes("PYTHON")||!pythonEditor.vi
 
 const editorUx=await page.evaluate(async()=>{
   const e=document.querySelector("#editor");
-  e.value="linha1\\nlinha2\\nlinha3";
+  e.value=["linha1","linha2","linha3"].join(String.fromCharCode(10));
   e.selectionStart=e.selectionEnd=e.value.length;
   e.dispatchEvent(new Event("input",{bubbles:true}));
   await new Promise(r=>setTimeout(r,350));
@@ -137,7 +137,7 @@ const editorUx=await page.evaluate(async()=>{
   const hidden=!document.querySelector("#autocomplete")?.classList.contains("show");
   return {lines,synced,hidden,stored:localStorage.getItem("dev-anabel-session-v2")};
 });
-if(editorUx.lines!=="1\\n2\\n3"||!editorUx.synced||!editorUx.hidden||!editorUx.stored) throw new Error("UX do editor ou persistência falhou: "+JSON.stringify(editorUx));
+if(editorUx.lines!==["1","2","3"].join(String.fromCharCode(10))||!editorUx.synced||!editorUx.hidden||!editorUx.stored) throw new Error("UX do editor ou persistência falhou: "+JSON.stringify(editorUx));
 
 const intent=await page.evaluate(()=>[
   window.DevAnabel.intent("analise meu codigo").type,

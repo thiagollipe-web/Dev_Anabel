@@ -200,14 +200,14 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   }
   function webRuntimeHTML(code,language){
     const source=String(code||"");
-    const isModule=language==="javascript" && /^\\s*(?:import|export)\\b/m.test(source);
+    const safeSource=source.replaceAll("</script","<\\/script").replaceAll("</SCRIPT","<\\/SCRIPT");
     const bootstrap='<script>(()=>{addEventListener("error",e=>parent.postMessage({source:"dev-anabel-runtime",type:"error",error:String(e.message||"erro no runtime")},"*"));addEventListener("unhandledrejection",e=>parent.postMessage({source:"dev-anabel-runtime",type:"error",error:String(e.reason||"Promise rejeitada")},"*"));const oldLog=console.log.bind(console);console.log=(...a)=>{oldLog(...a);parent.postMessage({source:"dev-anabel-runtime",type:"log",text:a.map(String).join(" ")},"*")};})()<\\/script>';
     if(language==="css"){
-      return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dev_Anabel Live</title>'+bootstrap+'<style>'+source.replaceAll("</style","<\\/style")+'</style></head><body><div id="app"></div></body></html>';
+      return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+bootstrap+'<style>'+source.replaceAll("</style","<\\/style").replaceAll("</STYLE","<\\/STYLE")+'</style></head><body><div id="app"></div></body></html>';
     }
-    const scriptTag=isModule?'<script type="module">':'<script>';
-    const safe=source.replaceAll("</script","<\\/script");
-    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dev_Anabel Live</title>'+bootstrap+'</head><body><div id="app"></div>'+scriptTag+safe+'</script></body></html>';
+    const module=/^\\s*(?:import|export)\\b/m.test(source);
+    const scriptTag=module?'<script type="module">':'<script>';
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+bootstrap+'</head><body><div id="app"></div>'+scriptTag+safeSource+'</script></body></html>';
   }
   function run(code){
     if(!String(code||"").trim()){log("ANABEL: não há código para executar.");return false;}

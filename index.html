@@ -117,7 +117,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   function switchTab(i){
     i=Number(i);if(![0,1,2].includes(i))return;
     qsa(".tab").forEach((b,n)=>{b.classList.toggle("active",n===i);b.setAttribute("aria-selected",String(n===i));});
-    $(".panel").forEach((p,n)=>p.classList.toggle("visible",n===i));
+    qsa(".panel").forEach((p,n)=>p.classList.toggle("visible",n===i));
     if(i===0)drawLater();
   }
   function theme(v){

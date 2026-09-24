@@ -1510,27 +1510,6 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
 
   async function smartAnswer(query){
     if(await smartPythonAnswer(query))return;
-    const item=known(query);
-    if(item){
-      log("ANABEL: "+item.title);
-      log("EXPLICAÇÃO: "+item.text);
-      log("EXEMPLO: "+item.example);
-      log("DICA: "+item.tip);
-      addSource({kind:"LOCAL",title:item.source,url:item.url,note:"Referência técnica da base local."});
-      return;
-    }
-    const found=await research(query);
-    if(!found.length){
-      log("ANABEL: não encontrei material suficiente para responder com segurança.");
-      return;
-    }
-    let detail=found[0].note||found[0].title;
-    if(/\b(the|this|function|game|library|data|how|what)\b/i.test(detail))detail=await translateSimple(detail);
-    log("RESPOSTA SIMPLIFICADA: "+detail);
-    log("DICA: a referência está na área FONTES; consulte o original para contexto completo.");
-  }
-  async function smartAnswer(query){
-    if(await smartPythonAnswer(query))return;
     if(await callRemoteAssistant(query))return;
     const item=known(query);
     if(item){
@@ -1551,6 +1530,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     log("RESPOSTA SIMPLIFICADA: "+detail);
     log("DICA: a referência está na área FONTES; consulte o original para contexto completo.");
   }
+
   function intent(text){
     const n=norm(text);
     const url=text.match(/https?:\/\/[^\s<>"]+/i)?.[0]?.replace(/[),.;]+$/,"");

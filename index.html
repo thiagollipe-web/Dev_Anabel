@@ -286,6 +286,123 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   window.DevAnabel.research=research;
   window.DevAnabel.answer=answer;
 
+
+  function mask(code){
+    let out="",mode="code",quote="";
+    for(let i=0;i<code.length;i++){
+      const c=code[i],n=code[i+1];
+      if(mode==="code"){
+        if(c==="/"&&n==="/"){out+="  ";mode="line";i++;continue;}
+        if(c==="/"&&n==="*"){out+="  ";mode="block";i++;continue;}
+        if(c==="\""||c==="'"||c===String.fromCharCode(96)){out+=" ";quote=c;mode="string";continue;}
+        out+=c;continue;
+      }
+      if(mode==="line"){out+=c==="\n"?"\n":" ";if(c==="\n")mode="code";continue;}
+      if(mode==="block"){out+=c==="\n"?"\n":" ";if(c==="*"&&n==="/"){out+=" ";i++;mode="code";}continue;}
+      out+=c==="\n"?"\n":" ";
+      if(c==="\\"){out+=" ";i++;continue;}
+      if(c===quote)mode="code";
+    }
+    return out;
+  }
+
+  function refactorVar(code){
+    const m=mask(code);let out="",count=0;
+    for(let i=0;i<code.length;){
+      const prev=i?m[i-1]:" ",next=m[i+3]||" ";
+      if(m.slice(i,i+3)==="var"&&/[^A-Za-z0-9_$]/.test(prev)&&/\s/.test(next)){out+="let";i+=3;count++;}
+      else{out+=code[i];i++;}
+    }
+    return {code:out,count};
+  }
+
+  function removeLogs(code){
+    let count=0;
+    const out=code.split("\n").filter(line=>{
+      if(/^\s*console\.log\s*\([^;]*\)\s*;?\s*$/.test(line)){count++;return false;}
+      return true;
+    });
+    return {code:out.join("\n"),count};
+  }
+
+  function arrows(code){
+    let count=0;
+    const re=/(?:const\s+([A-Za-z_$][\w$]*)\s*=\s*)?function\s*\(([^)]*)\)\s*\{\s*return\s+([^;{}]+);?\s*\}/g;
+    const out=code.replace(re,(match,name,args,expr)=>{
+      count++;
+      const body="("+args.trim()+") => "+expr.trim();
+      return name?"const "+name+" = "+body:body;
+    });
+    return {code:out,count};
+  }
+
+  function analyze(){
+    const code=editor.value;
+    if(!code.trim()){log("ANABEL: editor vazio.");return null;}
+    const m=mask(code);
+    const result={
+      varCount:(m.match(/\bvar\b/g)||[]).length,
+      logCount:(m.match(/\bconsole\.log\s*\(/g)||[]).length,
+      functionCount:(m.match(/\bfunction\b/g)||[]).length,
+      arrowCount:(m.match(/=>/g)||[]).length,
+      fetchCount:(m.match(/\bfetch\s*\(/g)||[]).length
+    };
+    log("ANABEL: análise concluída.");
+    log("ANÁLISE: var="+result.varCount+" · console.log="+result.logCount+" · function="+result.functionCount+" · arrow="+result.arrowCount+" · fetch="+result.fetchCount);
+    if(result.fetchCount)log("DICA: confira response.ok, tratamento de erros e CORS.");
+    if(/\bawait\b/.test(m))log("DICA: código assíncrono encontrado; considere try/catch.");
+    if(!result.varCount&&!result.logCount&&!result.fetchCount)log("DICA: nenhum dos padrões básicos conhecidos foi encontrado.");
+    return result;
+  }
+
+  function refactor(){
+    if(!editor.value.trim()){log("ANABEL: editor vazio.");return null;}
+    snapshot("antes da refatoração");
+    let code=editor.value;
+    const a=refactorVar(code);code=a.code;
+    const b=removeLogs(code);code=b.code;
+    const c=arrows(code);code=c.code;
+    editor.value=code;
+    log("ANABEL: refatoração aplicada → var→let: "+a.count+" · console.log removidos: "+b.count+" · arrow: "+c.count);
+    if(a.count){addSource({kind:"REF",title:"MDN — let",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/let",note:"Justificativa para let."});log("DICA: use const quando o valor não for reatribuído.");}
+    if(b.count)addSource({kind:"REF",title:"MDN — console.log()",url:"https://developer.mozilla.org/docs/Web/API/console/log_static",note:"Referência da Console API."});
+    if(c.count)addSource({kind:"REF",title:"MDN — Arrow functions",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Functions/Arrow_functions",note:"A Anabel transforma apenas funções simples com retorno direto."});
+    switchTab(1);
+    return {varCount:a.count,logCount:b.count,arrowCount:c.count};
+  }
+
+  function strategyGame(){
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reino dos 16 Turnos</title><style>*{box-sizing:border-box}body{margin:0;background:#000;color:#00ff33;font-family:monospace;padding:12px}main{max-width:760px;margin:auto}h1{text-align:center}.hud{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.stat,button,#msg{border:1px solid #00ff33;background:#080808;color:#00ff33;padding:8px;font:700 12px monospace}canvas{width:100%;display:block;margin-top:7px;border:2px solid #00ff33;image-rendering:pixelated}.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:7px}#msg{margin-top:7px;min-height:40px}@media(max-width:520px){.hud{grid-template-columns:repeat(2,1fr)}.actions{grid-template-columns:repeat(2,1fr)}}</style></head><body><main><h1>REINO DOS 16 TURNOS</h1><div class="hud"><div class="stat">TURNO <b id="t">1</b>/16</div><div class="stat">COMIDA <b id="f">30</b></div><div class="stat">OURO <b id="g">20</b></div><div class="stat">DEFESA <b id="d">10</b></div></div><canvas id="m" width="480" height="300"></canvas><div class="actions"><button data-a="f">PRODUZIR</button><button data-a="g">MINA</button><button data-a="d">DEFENDER</button><button data-a="e">EXPANDIR</button></div><div id="msg">Escolha uma ação por turno.</div></main><script>(()=>{const c=document.getElementById("m"),x=c.getContext("2d"),t=document.getElementById("t"),f=document.getElementById("f"),g=document.getElementById("g"),d=document.getElementById("d"),msg=document.getElementById("msg");let s={t:1,f:30,g:20,d:10,l:1,end:false};function draw(){x.clearRect(0,0,480,300);x.fillStyle="#071007";x.fillRect(0,0,480,300);for(let y=0;y<5;y++)for(let i=0;i<8;i++){x.strokeStyle="#16451d";x.strokeRect(i*60,y*60,60,60);if((i+y)%4===0){x.fillStyle="#00ff33";x.fillRect(i*60+24,y*60+24,12,12)}}x.fillStyle="#00ff33";x.fillRect(190,120,100,58);x.fillStyle="#000";x.font="14px monospace";x.fillText("VILA",222,153);t.textContent=Math.min(s.t,16);f.textContent=s.f;g.textContent=s.g;d.textContent=s.d}function next(m){if(s.end)return;s.f-=2;if(s.f<=0){s.end=true;msg.textContent="DERROTA: faltou comida.";draw();return}s.t++;msg.textContent=m;if(s.t>16){s.end=true;msg.textContent=(s.l>=6&&s.d>=20&&s.g>=20)?"VITÓRIA: reino consolidado.":"FIM: reino não consolidado."}draw()}function act(a){if(s.end)return;if(a==="f"){s.f+=8;next("A produção agrícola aumentou a comida.")}else if(a==="g"){s.g+=7;next("A mina trouxe ouro.")}else if(a==="d"){s.d+=5;s.g=Math.max(0,s.g-3);next("A defesa foi reforçada.")}else{s.l++;s.g=Math.max(0,s.g-5);next("Território expandido.")}}document.querySelectorAll("button").forEach(b=>b.onclick=()=>act(b.dataset.a));addEventListener("message",e=>{if(e.source!==parent)return;const q=e.data?.command;if(q==="left")act("d");if(q==="right")act("e")});draw()})()<\/script></body></html>';
+  }
+
+  function spaceGame(){
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Space Invaders</title><style>body{margin:0;background:#000;color:#00ff33;font-family:monospace;display:grid;place-items:center;min-height:100vh}canvas{width:min(92vw,600px);border:2px solid #00ff33;image-rendering:pixelated}</style></head><body><canvas id="g" width="360" height="260"></canvas><script>(()=>{const c=document.getElementById("g"),x=c.getContext("2d");let p=166,shot=null,score=0,en=[];for(let y=0;y<2;y++)for(let i=0;i<7;i++)en.push({x:34+i*46,y:34+y*24});function mv(d){p=Math.max(5,Math.min(330,p+d*14))}addEventListener("keydown",e=>{if(e.key==="ArrowLeft")mv(-1);if(e.key==="ArrowRight")mv(1);if(e.code==="Space"&&!shot)shot={x:p+12,y:230}});addEventListener("message",e=>{if(e.source!==parent)return;const q=e.data?.command;if(q==="left")mv(-1);if(q==="right")mv(1);if(q==="fire"&&!shot)shot={x:p+12,y:230}});function loop(){x.clearRect(0,0,360,260);x.fillStyle="#00ff33";x.font="12px monospace";x.fillText("SCORE "+String(score).padStart(4,"0"),8,15);en.forEach(a=>x.fillRect(a.x,a.y,24,12));x.fillRect(p,236,28,8);x.fillRect(p+12,228,4,8);if(shot){shot.y-=7;x.fillRect(shot.x,shot.y,3,8);for(let i=en.length-1;i>=0;i--){const a=en[i];if(shot.x>=a.x-2&&shot.x<=a.x+26&&shot.y<=a.y+12&&shot.y+8>=a.y){en.splice(i,1);shot=null;score+=10;break}}if(shot&&shot.y<0)shot=null}requestAnimationFrame(loop)}requestAnimationFrame(loop)})()<\/script></body></html>';
+  }
+
+  function ideas(query){
+    state.ideas=[...IDEAS];
+    log("ANABEL: referências de pesquisa podem servir de contexto; as propostas abaixo vêm do catálogo local.");
+    state.ideas.forEach((x,i)=>{log("IDEIA "+(i+1)+" — "+x.title);log("  "+x.pitch);log("  MECÂNICAS: "+x.mechanics.join(", "));});
+    log("ANABEL: escolha uma ideia pelo número.");
+  }
+
+  function selectIdea(n){
+    const i=Math.max(1,Math.min(5,Number(n)||1))-1;
+    const x=state.ideas[i];
+    if(!x){log("ANABEL: não há ideias carregadas.");return;}
+    state.selectedIdea=x;
+    log("ANABEL: ideia selecionada → "+x.title);
+    log("ANABEL: agora diga “me dê o código”.");
+  }
+
+  function generate(){
+    const x=state.selectedIdea||IDEAS[0];
+    snapshot("antes de gerar "+x.title);
+    editor.value=/space|invaders/i.test(x.title)?spaceGame():strategyGame();
+    log("ANABEL: protótipo gerado → "+x.title);
+    switchTab(1);
+  }
+
 /* APPEND */
 </script>
 </body>

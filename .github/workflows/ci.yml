@@ -21,6 +21,45 @@ jobs:
         with:
           node-version: 20
 
+      - name: Validate HTML structure
+        run: |
+          test -s index.html
+          grep -q '<!DOCTYPE html>' index.html
+          grep -q 'id="terminal"' index.html
+          grep -q 'id="editor"' index.html
+          grep -q 'id="sandbox"' index.html
+
+      - name: Validate inline JavaScript syntax
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('index.html', 'utf8');
+          const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m => m[1]).filter(s => s.trim());
+          if (!scripts.length) throw new Error('Nenhum script inline encontrado.');
+          fs.writeFileSync('/tmp/dev_anabel_inline.js', scripts.join('\n\n'));
+          console.log('Scripts encontrados:', scripts.length);
+          NODE
+          node --check /tmp/dev_anabel_inline.js
+
+      - name: Static integrity checks
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('index.html', 'utf8');
+          const checks = [
+            ['uma função ideas', (html.match(/\basync function ideas\s*\(/g) || []).length === 1],
+            ['uma função smartAnswer', (html.match(/\basync function smartAnswer\s*\(/g) || []).length === 1],
+            ['intent exportado', html.includes('    intent\n  };')],
+            ['sandbox isolado', html.includes('sandbox="allow-scripts"')],
+            ['selftest presente', html.includes('SELFTEST:')],
+            ['controle móvel de fogo', html.includes('id="fire"')],
+            ['sem script remoto obrigatório', !/<script[^>]+src=/.test(html)]
+          ];
+          const failed = checks.filter(function (item) { return !item[1]; });
+          checks.forEach(function (item) { console.log((item[1] ? 'PASS: ' : 'FAIL: ') + item[0]); });
+          if (failed.length) process.exit(1);
+          NODE
+
       - name: Install Playwright
         run: npm install --no-save --no-package-lock playwright@1.55.0
 

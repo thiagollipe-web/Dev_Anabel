@@ -1520,6 +1520,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   }
 
   const AI_ENDPOINT=localStorage.getItem("anabel-api-endpoint") || (location.hostname.endsWith(".vercel.app") ? "/api/gemini" : "https://dev-anabel.vercel.app/api/gemini");
+  const AI_ENDPOINT=localStorage.getItem("anabel-api-endpoint") || (location.hostname.endsWith(".vercel.app") ? "/api/gemini" : "https://dev-anabel.vercel.app/api/gemini");
   const OLLAMA_ENDPOINT=localStorage.getItem("anabel-ollama-endpoint") || "http://127.0.0.1:11434/api/chat";
   const OLLAMA_MODEL=localStorage.getItem("anabel-ollama-model") || "gemma4:31b-cloud";
 
@@ -1529,13 +1530,17 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     try{
       console.log("ANABEL OLLAMA: tentando", OLLAMA_ENDPOINT, "modelo", OLLAMA_MODEL);
       status.textContent="IA LOCAL: conectando ao Ollama ("+OLLAMA_MODEL+")…";
-      const prompt="Você é a IA principal da Dev_Anabel. Responda em português do Brasil, com precisão técnica, de forma prática e direta. Se o usuário pedir código, entregue código funcional e explique os pontos críticos.\n\nPedido do usuário:\n"+String(query).slice(0,12000);
+      const prompt="Você é a IA principal da Dev_Anabel. Responda em português do Brasil, com precisão técnica, de forma prática e direta. Se o usuário pedir código, entregue código funcional e explique os pontos críticos.\\n\\nPedido do usuário:\\n"+String(query).slice(0,12000);
       const response=await fetch(OLLAMA_ENDPOINT,{
         method:"POST",
         headers:{"Content-Type":"application/json"},
+        mode:"cors",
         body:JSON.stringify({
           model:OLLAMA_MODEL,
-          messages:[{role:"user",content:prompt}],
+          messages:[
+            {role:"system",content:"Você é a IA principal da Dev_Anabel. Responda em português do Brasil e priorize programação, depuração, jogos, web e explicações técnicas."},
+            {role:"user",content:prompt}
+          ],
           stream:false
         }),
         signal:controller.signal
@@ -1552,7 +1557,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       console.warn("Dev_Anabel Ollama:",message);
       if(error?.name==="TypeError"){
         console.error("ANABEL OLLAMA: provável CORS ou endpoint indisponível.", {endpoint:OLLAMA_ENDPOINT, model:OLLAMA_MODEL, error});
-        log("ANABEL: Ollama foi bloqueado pelo navegador (CORS) ou não está acessível.");
+        log("ANABEL: Ollama bloqueado pelo navegador. Verifique OLLAMA_ORIGINS e se o Ollama está aberto.");
       }else{
         log("ANABEL: Ollama local indisponível → "+message);
       }
@@ -1565,7 +1570,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   async function testOllamaConnection(){
     const ok=await callOllamaAssistant("Responda apenas: ANABEL OLLAMA OK");
     if(!ok){
-      log("ANABEL: verifique se o Ollama está aberto e se OLLAMA_ORIGINS permite https://thiagollipe-web.github.io.");
+      log("ANABEL: teste Ollama falhou. O fallback Gemini/Groq continuará disponível.");
       status.textContent="Ollama não conectado; fallback disponível.";
     }
     return ok;

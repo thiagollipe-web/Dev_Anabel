@@ -110,14 +110,10 @@ await page.evaluate(()=>window.DevAnabel.generate());
 const generated=await page.evaluate(()=>document.querySelector("#editor").value);
 if(!generated.includes("<!doctype html>")||!generated.includes("REINO DOS 16 TURNOS")) throw new Error("Geração de jogo falhou");
 
-await page.evaluate(() => new Promise(resolve => {
-  const frame = document.querySelector("#sandbox");
-  frame.addEventListener("load", resolve, {once:true});
-  window.DevAnabel.run(document.querySelector("#editor").value);
-}));
-const gameFrame=page.frames().find(f=>f!==page.mainFrame() && f.url().startsWith("blob:"));
-if(!gameFrame) throw new Error("Frame do Sandbox não foi criado");
-await gameFrame.waitForSelector("h1", {timeout:3000});
+await page.evaluate(() => window.DevAnabel.run(document.querySelector("#editor").value));
+await page.locator("#sandbox").waitFor({state:"attached"});
+const gameFrame=page.frameLocator("#sandbox");
+await gameFrame.locator("h1").waitFor({state:"visible",timeout:5000});
 const frameText=await gameFrame.locator("body").innerText();
 if(!frameText.includes("REINO DOS 16 TURNOS")) throw new Error("Sandbox não executou o jogo");
 

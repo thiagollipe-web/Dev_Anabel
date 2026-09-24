@@ -19,6 +19,7 @@ const routes=[
   ["https://pt.wikipedia.org/**",{pages:[{title:"Canvas",key:"Canvas",description:"Área de desenho do navegador",content_urls:{desktop:{page:"https://pt.wikipedia.org/wiki/Canvas"}}]}],
   ["https://api.stackexchange.com/**",{items:[{title:"Como usar Canvas",link:"https://pt.stackoverflow.com/q/1",tags:["javascript","canvas"]}]}],
   ["https://api.github.com/search/repositories**",{items:[{full_name:"test/canvas",html_url:"https://github.com/test/canvas",description:"Canvas test",stargazers_count:42}]}],
+  ["https://raw.githubusercontent.com/**",{body:"const remoto = 7;"}],
   ["https://api.mymemory.translated.net/**",{responseData:{translatedText:"Uma função é um bloco reutilizável de código."}}]
 ];
 
@@ -95,9 +96,9 @@ if(attached!=="const anexado = 42;") throw new Error("Anexação falhou");
 await page.evaluate(()=>window.DevAnabel.loadUrl("https://github.com/test/repo/blob/main/app.js"));
 await page.waitForTimeout(100);
 const remote=await page.evaluate(()=>document.querySelector("#editor").value);
-if(!remote.includes("const anexado")) throw new Error("URL mock não retornou o conteúdo esperado");
+if(remote!=="const remoto = 7;") throw new Error("URL mock não retornou o conteúdo esperado");
 
-await page.evaluate(()=>window.DevAnabel.answer("o que significa function?"));
+await page.evaluate(()=>window.DevAnabel.answer("explique um assunto totalmente desconhecido"));
 await page.waitForTimeout(100);
 const translated=await page.evaluate(()=>window.DevAnabel.state.history.some(x=>x.includes("Uma função é um bloco reutilizável")));
 if(!translated) throw new Error("Rota de tradução não funcionou");

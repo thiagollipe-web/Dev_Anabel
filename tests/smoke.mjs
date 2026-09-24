@@ -70,7 +70,7 @@ const base=await page.evaluate(()=>({
   noLlm:![...document.scripts].some(s=>/openai|anthropic|gemini|ollama|qwen|gemma/i.test(s.textContent))
 }));
 
-if(base.selftest!=="SELFTEST: 23/23 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest+" | "+base.selftestFailures.join(" | "));
+if(base.selftest!=="SELFTEST: 25/25 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest+" | "+base.selftestFailures.join(" | "));
 if(base.mobileTabs!==3||base.mobilePad!==3||base.sandbox!=="allow-scripts"||!base.dom||!base.noLlm) throw new Error("Estrutura básica inválida");
 
 const runtimeTest=await page.evaluate(()=>new Promise(resolve=>{
@@ -200,6 +200,18 @@ await page.waitForTimeout(100);
 const attached=await page.evaluate(()=>document.querySelector("#editor").value);
 if(attached!=="const anexado = 42;") throw new Error("Anexação falhou");
 
+await page.evaluate(async()=>{
+  const input=document.querySelector("#file-input");
+  const file=new File(["const quebrado = ;"],"erro.js",{type:"text/javascript"});
+  const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;input.dispatchEvent(new Event("change",{bubbles:true}));
+});
+await page.waitForTimeout(900);
+const autoFile=await page.evaluate(()=>({
+  history:window.DevAnabel.state.history.filter(x=>x.includes("GATILHO AUTÔNOMO")),
+  candidates:window.DevAnabel.state.autonomous.candidateCount
+}));
+if(autoFile.history.length<1||autoFile.candidates<1) throw new Error("Gatilho autônomo de arquivo não disparou");
+
 await page.evaluate(()=>window.DevAnabel.loadUrl("https://github.com/test/repo/blob/main/app.js"));
 await page.waitForTimeout(100);
 const remote=await page.evaluate(()=>document.querySelector("#editor").value);
@@ -212,6 +224,18 @@ if(extracted.editor!=="const resultado = 99;\nconsole.log(resultado);"||extracte
 
 const researchCode=await page.evaluate(()=>window.DevAnabel.intent("pesquise um exemplo de código de canvas").type);
 if(researchCode!=="researchCode") throw new Error("Modo pesquisa + código não foi reconhecido");
+
+await page.evaluate(()=>window.DevAnabel.autonomousSearch("canvas", "teste autônomo"));
+await page.waitForTimeout(250);
+const autonomous=await page.evaluate(()=>({
+  code:document.querySelector("#editor").value,
+  selected:window.DevAnabel.state.autonomous.selected,
+  candidates:window.DevAnabel.state.autonomous.candidateCount,
+  score:window.DevAnabel.state.autonomous.score
+}));
+if(autonomous.code!=="const resultado = 99;\nconsole.log(resultado);"||autonomous.candidates<1||!autonomous.selected||typeof autonomous.score!=="number") {
+  throw new Error("Loop de busca autônoma não entregou o melhor candidato");
+}
 
 await page.evaluate(()=>window.DevAnabel.answer("explique um assunto totalmente desconhecido"));
 await page.waitForTimeout(100);

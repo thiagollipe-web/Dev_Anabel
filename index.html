@@ -1695,7 +1695,13 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       ["Web runner",typeof webRuntimeHTML==="function"],
       ["Mobile tabs",qsa(".tab").length===3],
       ["Mobile pad",qsa(".pad").length===3],
-      ["Fontes",typeof addSource==="function"]
+      ["Fontes",typeof addSource==="function"],
+      ["Linhas numeradas",!!lineNumbers],
+      ["Persistência local",typeof saveSession==="function"&&typeof restoreSession==="function"],
+      ["Fallback Pyodide",/v314\.0\.7\/full|v0\.29\.5\/full/.test(pythonRuntimeHTML())],
+      ["Resize com debounce",typeof debouncedResize==="function"],
+      ["Referrer do Sandbox",sandbox.getAttribute("referrerpolicy")==="no-referrer"],
+      ["Sandbox sem same-origin",!sandbox.getAttribute("sandbox").includes("allow-same-origin")]
     ];
     const ok=checks.filter(x=>x[1]).length;
     log("SELFTEST: "+ok+"/"+checks.length+" verificações aprovadas.");

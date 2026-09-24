@@ -87,7 +87,6 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
 <button class="quick" data-command="/executar" type="button">/executar</button>
 <button class="quick" data-command="/ideias jogo estratégia 8-bit" type="button">/ideias</button>
 <button class="quick" data-command="/fontes" type="button">/fontes</button>
-<button class="quick" data-command="/ollama" type="button">/ollama</button>
 </div>
 <div id="status"></div>
 </section>
@@ -104,6 +103,8 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
 </div>
 </section>
 <section id="pad"><button class="pad" id="left" type="button">◀ ESQ</button><button class="pad" id="fire" type="button">FOGO</button><button class="pad" id="right" type="button">DIR ▶</button></section>
+<script src="./firebase-config.js"></script>
+<script type="module" src="./firebase-ai.js"></script>
 <script>
 
 "use strict";
@@ -121,7 +122,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     theme:"green",color:"#00ff33",busy:false,queued:false,sandboxUrl:"",language:"auto",
     history:[
       "ANABEL: sistema iniciado.",
-      "ANABEL: bot local sem LLM.",
+      "ANABEL: núcleo local ativo; IA Gemini via Firebase preparada.",
       "ANABEL: conhecimento, regras, pesquisa e ferramentas ativas."
     ],
     sourceList:[],snapshots:[],ideas:[],selectedIdea:null,pendingAction:null,
@@ -1524,18 +1525,30 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   async function callRemoteAssistant(query){
     const history=state.history.slice(-12).map((line,i)=>({role:i%2===0?"user":"model",parts:[{text:String(line)}]}));
     try{
-      status.textContent="IA REMOTA: Gemini / Groq…";
+      if(window.AnabelFirebaseAI?.configured){
+        status.textContent="IA: conectando ao Gemini…";
+        await window.AnabelFirebaseReady;
+        const data=await window.AnabelFirebaseAI.generate(String(query).slice(0,12000),history);
+        log("ANABEL [GEMINI/FIREBASE]: "+data.text);
+        status.textContent="IA ativa: Gemini via Firebase";
+        return true;
+      }
+    }catch(error){
+      const detail=error instanceof Error ? error.message : String(error || "erro desconhecido");
+      log("ANABEL: Firebase Gemini falhou: "+detail);
+    }
+    try{
+      status.textContent="IA: gateway de reserva…";
       const response=await fetch(AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:String(query).slice(0,12000),history})});
       const data=await response.json().catch(()=>({}));
       if(!response.ok||!data.text)throw new Error(data.error||"gateway indisponível");
       log("ANABEL ["+String(data.provider||"IA").toUpperCase()+"]: "+data.text);
-      status.textContent="IA remota ativa: "+String(data.provider||"remota");
+      status.textContent="IA ativa: "+String(data.provider||"remota");
       return true;
     }catch(error){
       const detail=error instanceof Error ? error.message : String(error || "erro desconhecido");
-      log("ANABEL: gateway remoto indisponível: "+detail);
-      log("ANABEL: endpoint utilizado: "+AI_ENDPOINT);
-      status.textContent="Gateway remoto indisponível; motor local ativo.";
+      log("ANABEL: IA remota indisponível: "+detail);
+      status.textContent="Motor local ativo."; 
       return false;
     }
   }
@@ -1570,7 +1583,6 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(url)return {type:"url",value:url};
     if(/^\/?(ajuda|help|comandos)(\s|$)/.test(n))return {type:"help"};
     if(/^\/?(fontes?|source)(\s|$)/.test(n))return {type:"sources"};
-    if(/^\/?ollama(\s|$)/.test(n))return {type:"ollama"};
     if(/^\/?(desfazer|undo|voltar)(\s|$)/.test(n))return {type:"undo"};
     if(/^(sim|s|yes|y|go|ok|okay|pode|manda|confirmo)$/.test(n)||/^(nao|não|n|no|cancelar|cancelo)$/.test(n))return {type:"confirm",value:n};
     if(/^\/?(executar|rodar|run|play)(\s|$)/.test(n))return {type:"run"};
@@ -1619,7 +1631,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     const i=intent(text);
 
     if(i.type==="help"){
-      log("COMANDOS: /ajuda · /ollama · /pesquisar assunto · /ideias assunto · /analisar · /corrigir · /melhorar · /refatorar · /executar · /desfazer · /fontes");
+      log("COMANDOS: /ajuda · /pesquisar assunto · /ideias assunto · /analisar · /corrigir · /melhorar · /refatorar · /executar · /desfazer · /fontes");
       log("NATURAL: faça perguntas, mande uma URL, peça uma ideia, escolha uma ideia e peça o código.");
       return;
     }
@@ -1630,7 +1642,6 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       return;
     }
 
-    if(i.type==="ollama"){await callRemoteAssistant("Responda apenas: ANABEL API OK");return;}
     if(i.type==="undo"){undo();return;}
     if(i.type==="confirm"){applyPending(i.value);return;}
     if(i.type==="run"){run(editor.value);return;}

@@ -38,6 +38,15 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
 #sources{display:none;max-height:130px;overflow:auto;background:#030303;border-top:1px solid var(--border);padding:7px;font-size:10px}
 #sources.show{display:block}
 .source{margin-bottom:6px;line-height:1.35}.source a{color:var(--fg);word-break:break-all}.source span{color:var(--muted)}
+#review{width:1400px;max-width:100%;display:grid;grid-template-columns:minmax(260px,.7fr) minmax(360px,1.3fr);gap:8px}
+.review-box{background:#030303;border:2px solid var(--border);padding:9px;min-width:0}
+.review-title{color:var(--fg);font-size:11px;text-transform:uppercase;margin-bottom:7px}
+#review-summary{font-size:11px;line-height:1.4;color:var(--muted);margin-bottom:7px}
+#review-list{margin:0;padding-left:18px;font-size:11px;line-height:1.45}
+#review-list li{margin:4px 0}
+#corrected-output{width:100%;height:240px;resize:vertical;background:#080808;color:var(--fg);border:1px solid var(--fg);padding:9px;font:11px/1.4 "Courier New",monospace;white-space:pre;tab-size:4}
+#copy-corrected{margin-top:7px;background:#101010;color:var(--fg);border:1px solid var(--fg);padding:7px 10px;cursor:pointer}
+@media(max-width:900px){#review{grid-template-columns:1fr}}
 #status{font-size:10px;color:var(--muted);min-height:13px}
 #pad{display:none;justify-content:center;gap:10px}
 .pad{background:#202020;color:var(--fg);border:2px solid var(--fg);padding:13px 24px;touch-action:manipulation}
@@ -72,12 +81,26 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
 <div id="quick">
 <button class="quick" data-command="/ajuda" type="button">/ajuda</button>
 <button class="quick" data-command="/analisar" type="button">/analisar</button>
+<button class="quick" data-command="/corrigir" type="button">/corrigir</button>
+<button class="quick" data-command="/melhorar" type="button">/melhorar</button>
 <button class="quick" data-command="/refatorar" type="button">/refatorar</button>
 <button class="quick" data-command="/executar" type="button">/executar</button>
 <button class="quick" data-command="/ideias jogo estratégia 8-bit" type="button">/ideias</button>
 <button class="quick" data-command="/fontes" type="button">/fontes</button>
 </div>
 <div id="status"></div>
+</section>
+<section id="review" aria-live="polite">
+<div class="review-box">
+<div class="review-title">🔎 Ideias de melhoria</div>
+<div id="review-summary">Analise ou corrija um código para gerar recomendações técnicas.</div>
+<ul id="review-list"></ul>
+</div>
+<div class="review-box">
+<div class="review-title">🛠️ Código corrigido</div>
+<textarea id="corrected-output" spellcheck="false" readonly placeholder="O código corrigido aparecerá aqui."></textarea>
+<button id="copy-corrected" type="button">COPIAR CÓDIGO</button>
+</div>
 </section>
 <section id="pad"><button class="pad" id="left" type="button">◀ ESQ</button><button class="pad" id="fire" type="button">FOGO</button><button class="pad" id="right" type="button">DIR ▶</button></section>
 <script>
@@ -89,6 +112,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   const canvas=$("#terminal"),ctx=canvas.getContext("2d",{alpha:false});
   const editor=$("#editor"),sandbox=$("#sandbox"),input=$("#input"),send=$("#send");
   const fileInput=$("#file-input"),sources=$("#sources"),status=$("#status");
+  const reviewSummary=$("#review-summary"),reviewList=$("#review-list"),correctedOutput=$("#corrected-output"),copyCorrected=$("#copy-corrected");
   const state={
     theme:"green",color:"#00ff33",busy:false,queued:false,sandboxUrl:"",
     history:[
@@ -96,7 +120,8 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       "ANABEL: bot local sem LLM.",
       "ANABEL: conhecimento, regras, pesquisa e ferramentas ativas."
     ],
-    sourceList:[],snapshots:[],ideas:[],selectedIdea:null,pendingAction:null
+    sourceList:[],snapshots:[],ideas:[],selectedIdea:null,pendingAction:null,
+    review:{issues:[],improvements:[],correctedCode:""}
   };
 
   const norm=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
@@ -316,6 +341,37 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     return {code:out,count};
   }
 
+  function buildImprovements(m,result){
+    const out=[];
+    if(result.varCount)out.push("Substitua var por let/const conforme a necessidade de reatribuição e escopo.");
+    if(result.logCount)out.push("Remova console.log de diagnóstico que não seja necessário no código final.");
+    if(result.functionCount>result.arrowCount)out.push("Modernize funções simples com retorno direto para Arrow Functions quando isso preservar o comportamento.");
+    if(result.fetchCount)out.push("Valide response.ok, trate erros de rede e considere CORS antes de consumir a resposta.");
+    if(/\bawait\b/.test(m))out.push("Proteja operações assíncronas com try/catch e trate estados de carregamento/falha.");
+    if(/getContext\s*\(\s*["']2d["']\)/.test(m))out.push("Para jogos e animações Canvas, centralize requestAnimationFrame e considere devicePixelRatio.");
+    if(/innerHTML\s*=/.test(m))out.push("Evite inserir HTML dinâmico sem necessidade; prefira textContent para texto simples.");
+    if(/addEventListener\s*\(/.test(m))out.push("Centralize listeners repetidos e remova listeners que não tenham mais utilidade.");
+    if(/touch|pointer|click/.test(m))out.push("Teste entrada por toque e mouse em diferentes tamanhos de tela.");
+    out.push("Mantenha funções pequenas, valide entradas e deixe uma responsabilidade clara em cada etapa.");
+    return [...new Set(out)];
+  }
+
+  function renderReview({result,sourceCode,correctedCode=sourceCode,mode="análise"}){
+    const improvements=buildImprovements(mask(sourceCode),result);
+    const issues=[];
+    if(result.varCount)issues.push(result.varCount+" ocorrência(s) de var");
+    if(result.logCount)issues.push(result.logCount+" console.log");
+    if(result.functionCount>result.arrowCount)issues.push("funções simples passíveis de modernização");
+    if(result.fetchCount)issues.push("uso de fetch");
+    if(/\bawait\b/.test(mask(sourceCode)))issues.push("código assíncrono");
+    state.review={issues,improvements,correctedCode};
+    if(reviewSummary)reviewSummary.textContent=issues.length?
+      "Revisão "+mode+": "+issues.join(" · ")+".":
+      "Revisão "+mode+": nenhum problema básico detectado.";
+    if(reviewList)reviewList.innerHTML=improvements.map(x=>"<li>"+esc(x)+"</li>").join("");
+    if(correctedOutput)correctedOutput.value=correctedCode||sourceCode;
+  }
+
   function analyze(){
     const code=editor.value;
     if(!code.trim()){log("ANABEL: editor vazio.");return null;}
@@ -334,9 +390,11 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(result.varCount)log("PERGUNTA DE ESCOPO: esta variável precisa existir fora do bloco onde foi criada?");
     if(result.fetchCount)log("PERGUNTA DE ASSINCRONISMO: o que deve acontecer quando a rede falhar ou responder devagar?");
     if(/\bArray\b|\bObject\b|\bMap\b|\bSet\b/.test(m))log("PERGUNTA DE ESTRUTURA: você precisa preservar ordem, buscar por chave ou impedir duplicidades?");
+    renderReview({result,sourceCode:code,correctedCode:code,mode:"análise"});
     state.pendingAction=(result.varCount||result.logCount||result.functionCount>result.arrowCount)?{type:"refactor"}:null;
-    if(state.pendingAction)log("ANABEL: posso aplicar as correções básicas. Responda sim, s, yes, go ou ok.");
+    if(state.pendingAction)log("ANABEL: existem correções automáticas disponíveis. Use /corrigir ou responda sim para aplicar a refatoração segura.");
     if(!result.varCount&&!result.logCount&&!result.fetchCount)log("DICA: nenhum dos padrões básicos conhecidos foi encontrado.");
+    log("ANABEL: ideias de melhoria foram colocadas no painel lateral.");
     return result;
   }
 
@@ -352,8 +410,55 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(a.count){addSource({kind:"REF",title:"MDN — let",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/let",note:"Justificativa para let."});log("DICA: use const quando o valor não for reatribuído.");}
     if(b.count)addSource({kind:"REF",title:"MDN — console.log()",url:"https://developer.mozilla.org/docs/Web/API/console/log_static",note:"Referência da Console API."});
     if(c.count)addSource({kind:"REF",title:"MDN — Arrow functions",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Functions/Arrow_functions",note:"A Anabel transforma apenas funções simples com retorno direto."});
+    const after=analyze();
+    renderReview({result:after,sourceCode:code,correctedCode:code,mode:"correção"});
+    correctedOutput.value=code;
+    log("ANABEL: código corrigido foi colocado no Editor e no painel “Código corrigido”.");
+    log("ANABEL: veja também as ideias de melhoria no painel “Ideias de melhoria”.");
     switchTab(1);
-    return {varCount:a.count,logCount:b.count,arrowCount:c.count};
+    return {varCount:a.count,logCount:b.count,arrowCount:c.count,code};
+  }
+
+  function fixCode(){
+    if(!editor.value.trim()){log("ANABEL: editor vazio.");return null;}
+    snapshot("antes da correção automática");
+    const before=editor.value;
+    let code=refactorVar(before).code;
+    code=removeLogs(code).code;
+    code=arrows(code).code;
+    editor.value=code;
+    const result=analyze();
+    state.pendingAction=null;
+    renderReview({result,sourceCode:code,correctedCode:code,mode:"correção automática"});
+    correctedOutput.value=code;
+    log("ANABEL: correção concluída. O código corrigido está no Editor e no painel de saída.");
+    log("ANABEL: abaixo do painel técnico estão as sugestões de melhoria para a próxima etapa.");
+    switchTab(1);
+    return code;
+  }
+
+  function improvementIdeas(){
+    const code=editor.value;
+    if(!code.trim()){
+      const generic=[
+        "Adicionar tratamento consistente de erros e estados de carregamento.",
+        "Separar interface, lógica de negócio e utilitários quando o arquivo crescer.",
+        "Adicionar validação de entradas e mensagens claras para o usuário.",
+        "Testar teclado, toque, telas pequenas e orientação do dispositivo.",
+        "Reduzir trabalho por frame e usar requestAnimationFrame em animações.",
+        "Adicionar testes automatizados para os fluxos críticos."
+      ];
+      reviewSummary.textContent="Melhorias gerais recomendadas para um projeto web.";
+      reviewList.innerHTML=generic.map(x=>"<li>"+esc(x)+"</li>").join("");
+      correctedOutput.value="";
+      log("ANABEL: gerei ideias gerais de melhoria porque o editor está vazio.");
+      return generic;
+    }
+    const result=analyze();
+    const improvements=state.review.improvements;
+    log("ANABEL: "+improvements.length+" ideias de melhoria foram geradas para este código.");
+    switchTab(0);
+    return improvements;
   }
 
   function strategyGame(){
@@ -453,6 +558,8 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(/\bspace\s*invaders?\b|\binvaders?\b/.test(n))return {type:"space"};
     if(/^\/?(analisar|analise|audit|diagnostico)(\s|$)/.test(n)||/\b(analisar|analise|audit|diagnostico)\b.*\b(codigo|editor)\b/.test(n))return {type:"analyze"};
     if(/^\/?(refatorar|modernizar|otimizar)(\s|$)/.test(n)||/console\.log|\bvar\b.*\blet\b|arrow function/.test(n))return {type:"refactor"};
+    if(/^\/?(corrigir|corrija|consertar|conserte|arrumar|arrume|fix|reparar|repare)(\s|$)/.test(n)||/\b(corrija|conserte|arrume|repare|corrigir|consertar|arrumar|reparar)\b.*\b(codigo|código|erro|bug|falha)\b/.test(n))return {type:"fix"};
+    if(/^\/?(melhorar|melhore|melhorias|sugestoes|sugestões)(\s|$)/.test(n)||/\b(ideias?|sugestoes?|sugestões)\b.*\b(melhoria|melhorias|melhorar|codigo|código)\b/.test(n))return {type:"improve"};
     const select=n.match(/\b(?:ideia|opcao|opção)\s*([1-5])\b/)||n.match(/\b(?:gostei|escolho|quero)\b.*\b([1-5])\b/);
     if(select)return {type:"select",value:Number(select[1])};
     if(/^\/?ideias?(\s|$)/.test(n)||/\b(dica|sugestao|sugestão)\b.*\b(jogo|game)\b/.test(n))return {type:"ideas",value:n.replace(/^\/?ideias?\s*/,"")};
@@ -488,7 +595,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     const i=intent(text);
 
     if(i.type==="help"){
-      log("COMANDOS: /ajuda · /pesquisar assunto · /ideias assunto · /analisar · /refatorar · /executar · /desfazer · /fontes");
+      log("COMANDOS: /ajuda · /pesquisar assunto · /ideias assunto · /analisar · /corrigir · /melhorar · /refatorar · /executar · /desfazer · /fontes");
       log("NATURAL: faça perguntas, mande uma URL, peça uma ideia, escolha uma ideia e peça o código.");
       return;
     }
@@ -505,6 +612,8 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(i.type==="tip"){contextualTip();return;}
     if(i.type==="space"){editor.value=spaceGame();log("ANABEL: Space Invaders carregado no editor.");switchTab(1);return;}
     if(i.type==="analyze"){analyze();return;}
+    if(i.type==="fix"){fixCode();return;}
+    if(i.type==="improve"){improvementIdeas();return;}
     if(i.type==="refactor"){refactor();return;}
     if(i.type==="url"){await loadUrl(i.value);return;}
     if(i.type==="research"){await research(i.value);return;}
@@ -552,6 +661,18 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();sendCommand();}});
 
   qsa(".quick").forEach(b=>b.addEventListener("click",()=>{input.value=b.dataset.command;sendCommand();}));
+  copyCorrected.addEventListener("click",async()=>{
+    if(!correctedOutput.value.trim()){log("ANABEL: não há código corrigido para copiar.");return;}
+    try{
+      await navigator.clipboard.writeText(correctedOutput.value);
+      status.textContent="Código corrigido copiado.";
+      log("ANABEL: código corrigido copiado para a área de transferência.");
+    }catch(e){
+      correctedOutput.focus();correctedOutput.select();
+      status.textContent="Selecione e copie manualmente.";
+      log("ANABEL: o navegador bloqueou a cópia automática; o código foi selecionado.");
+    }
+  });
 
   if(new URLSearchParams(location.search).get("selftest")==="1"){
     const checks=[

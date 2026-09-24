@@ -1,0 +1,1755 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050505">
+<title>Dev_Anabel — Retro Development Bot</title>
+<style>
+:root{--bg:#050505;--panel:#000;--border:#333;--fg:#00ff33;--glow:rgba(0,255,51,.2);--muted:#888;--warn:#ffcc00}
+[data-theme="amber"]{--fg:#ffb000;--glow:rgba(255,176,0,.2)}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font-family:monospace}
+body{padding:10px;display:flex;flex-direction:column;align-items:center;gap:10px;overscroll-behavior:contain}
+button,input,textarea,select{font:inherit}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+header{width:100%;max-width:1400px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+h1{margin:0;font-size:20px;letter-spacing:2px;text-transform:uppercase}
+.toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.tool,.theme select{background:#101010;color:var(--fg);border:1px solid var(--fg);padding:7px 10px;cursor:pointer}
+.theme{display:flex;gap:5px;align-items:center}
+#file-input{display:none}
+.mobile-tabs{display:none;width:100%;gap:5px}
+.tab{flex:1;background:#101010;color:var(--muted);border:1px solid var(--border);padding:10px;cursor:pointer}
+.tab.active{color:var(--fg);border-color:var(--fg)}
+#workspace{width:1400px;max-width:100%;height:min(480px,64vh);min-height:310px;display:flex;gap:12px}
+.panel{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
+.label{font-size:11px;color:var(--muted);margin-bottom:5px;text-transform:uppercase}
+canvas,#sandbox,#editor{width:100%;height:100%;min-height:0}
+canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0 0 20px var(--glow)}
+#editor-wrap{position:relative;flex:1;min-height:0;display:flex}#line-numbers{flex:0 0 42px;overflow:hidden;white-space:pre;text-align:right;user-select:none;background:#070707;color:var(--muted);border:2px solid var(--border);border-right:0;padding:12px 7px 12px 3px;font:12px/1.4 "Courier New",monospace;tab-size:4;line-height:1.4}#editor{flex:1;min-width:0;resize:none;background:#0b0b0b;color:var(--fg);border:2px solid var(--border);padding:12px;outline:none;white-space:pre;font:12px/1.4 "Courier New",monospace;tab-size:4}#editor-meta{position:absolute;top:5px;right:8px;z-index:4;font-size:9px;color:var(--muted);pointer-events:none;background:#000b;padding:2px 5px}#autocomplete{display:none;position:absolute;z-index:20;left:10px;top:10px;width:min(390px,calc(100% - 20px));max-height:210px;overflow:auto;background:#050505;border:1px solid var(--fg);box-shadow:0 0 15px var(--glow);font:11px/1.35 "Courier New",monospace}#autocomplete.show{display:block}.ac-item{display:grid;grid-template-columns:1fr auto;gap:8px;padding:6px 8px;cursor:pointer}.ac-item:hover,.ac-item.selected{background:var(--fg);color:#000}.ac-kind{opacity:.7}.ac-item.selected .ac-kind{opacity:.85}.ac-empty{padding:7px 8px;color:var(--muted)}
+#sandbox{display:block;border:2px solid var(--border);background:#000}
+#controls{width:1400px;max-width:100%;display:flex;flex-direction:column;gap:7px}
+#input-row{display:flex;gap:6px}
+#input{flex:1;min-width:0;background:#000;color:var(--fg);border:1px solid var(--fg);padding:12px;font-size:16px}
+#send{background:var(--fg);color:#000;border:0;padding:0 22px;font-weight:bold;cursor:pointer}
+#quick{display:flex;gap:5px;flex-wrap:wrap}
+.quick{background:#101010;color:var(--fg);border:1px solid var(--fg);padding:5px 8px;font-size:10px;cursor:pointer}
+#sources{display:none;max-height:130px;overflow:auto;background:#030303;border-top:1px solid var(--border);padding:7px;font-size:10px}
+#sources.show{display:block}
+.source{margin-bottom:6px;line-height:1.35}.source a{color:var(--fg);word-break:break-all}.source span{color:var(--muted)}
+#review{width:1400px;max-width:100%;display:grid;grid-template-columns:minmax(260px,.7fr) minmax(360px,1.3fr);gap:8px}
+.review-box{background:#030303;border:2px solid var(--border);padding:9px;min-width:0}
+.review-title{color:var(--fg);font-size:11px;text-transform:uppercase;margin-bottom:7px}
+#review-summary{font-size:11px;line-height:1.4;color:var(--muted);margin-bottom:7px}
+#review-list{margin:0;padding-left:18px;font-size:11px;line-height:1.45}
+#review-list li{margin:4px 0}
+#corrected-output{width:100%;height:240px;resize:vertical;background:#080808;color:var(--fg);border:1px solid var(--fg);padding:9px;font:11px/1.4 "Courier New",monospace;white-space:pre;tab-size:4}
+#copy-corrected{margin-top:7px;background:#101010;color:var(--fg);border:1px solid var(--fg);padding:7px 10px;cursor:pointer}
+@media(max-width:900px){#review{grid-template-columns:1fr}}
+#status{font-size:10px;color:var(--muted);min-height:13px}
+#pad{display:none;justify-content:center;gap:10px}
+.pad{background:#202020;color:var(--fg);border:2px solid var(--fg);padding:13px 24px;touch-action:manipulation}
+.drop{border-color:var(--fg)!important;box-shadow:0 0 15px var(--glow)!important}
+@media(max-width:900px){.mobile-tabs{display:flex}.panel{display:none}.panel.visible{display:flex}#workspace{height:58vh;min-height:290px}.toolbar{width:100%}.toolbar>*{flex:1}#pad{display:flex}}
+@media(max-width:520px){h1{font-size:16px}.theme{width:100%}.theme select{flex:1}#input-row{flex-direction:column}#send{min-height:44px}.quick{flex:1;text-align:center}.pad{flex:1}}
+</style>
+</head>
+<body>
+<header>
+<h1>Dev_Anabel Core System</h1>
+<div class="toolbar">
+<label class="tool" for="file-input">📎 ANEXAR</label>
+<input id="file-input" type="file" multiple accept=".html,.htm,.js,.mjs,.css,.json,.txt,.md,.xml,.svg,.csv,.py,.java,.c,.cpp,.h,.hpp,.cs,.ts,.tsx,.jsx">
+<button class="tool" id="export" type="button">💾 EXPORTAR</button>
+<button class="tool" id="undo" type="button">↶ DESFAZER</button>
+<div class="theme"><span>CRT:</span><select id="theme"><option value="green">VERDE</option><option value="amber">ÂMBAR</option></select></div>
+</div>
+</header>
+<div class="mobile-tabs">
+<button class="tab active" type="button" data-tab="0">Terminal</button>
+<button class="tab" type="button" data-tab="1">Código</button>
+<button class="tab" type="button" data-tab="2">Live View</button>
+</div>
+<main id="workspace">
+<section class="panel visible" id="p0"><div class="label">📟 Terminal CRT</div><canvas id="terminal" width="450" height="450"></canvas><div id="sources"></div></section>
+<section class="panel" id="p1"><div class="label">💻 Professor Python / Código Fonte</div><div id="editor-wrap"><div id="line-numbers" aria-hidden="true">1</div><textarea id="editor" spellcheck="false" placeholder="# Python: escreva aqui e pressione Ctrl+Espaço para sugestões..."></textarea><div id="editor-meta">LINGUAGEM: AUTO · AUTOCOMPLETE: CTRL+ESPAÇO</div><div id="autocomplete" role="listbox" aria-label="Sugestões de código"></div></div></section>
+<section class="panel" id="p2"><div class="label">🚀 Sandbox de Execução</div><iframe id="sandbox" title="Live View" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe></section>
+</main>
+<section id="controls">
+<div id="input-row"><input id="input" autocomplete="off" autofocus placeholder="Ex.: Anabel, me dê uma ideia de jogo de estratégia 8-bit"><button id="send" type="button">EXECUTAR</button></div>
+<div id="quick">
+<button class="quick" data-command="/ajuda" type="button">/ajuda</button>
+<button class="quick" data-command="/analisar" type="button">/analisar</button>
+<button class="quick" data-command="/corrigir" type="button">/corrigir</button>
+<button class="quick" data-command="/melhorar" type="button">/melhorar</button>
+<button class="quick" data-command="/refatorar" type="button">/refatorar</button>
+<button class="quick" data-command="/executar" type="button">/executar</button>
+<button class="quick" data-command="/ideias jogo estratégia 8-bit" type="button">/ideias</button>
+<button class="quick" data-command="/fontes" type="button">/fontes</button>
+</div>
+<div id="status"></div>
+</section>
+<section id="review" aria-live="polite">
+<div class="review-box">
+<div class="review-title">🔎 Ideias de melhoria</div>
+<div id="review-summary">Analise ou corrija um código para gerar recomendações técnicas.</div>
+<ul id="review-list"></ul>
+</div>
+<div class="review-box">
+<div class="review-title">🛠️ Código corrigido</div>
+<textarea id="corrected-output" spellcheck="false" readonly placeholder="O código corrigido aparecerá aqui."></textarea>
+<button id="copy-corrected" type="button">COPIAR CÓDIGO</button>
+</div>
+</section>
+<section id="pad"><button class="pad" id="left" type="button">◀ ESQ</button><button class="pad" id="fire" type="button">FOGO</button><button class="pad" id="right" type="button">DIR ▶</button></section>
+<script>
+
+"use strict";
+(()=> {
+  const $=(s,r=document)=>r.querySelector(s);
+  const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
+  const canvas=$("#terminal"),ctx=canvas.getContext("2d",{alpha:false});
+  const editor=$("#editor"),sandbox=$("#sandbox"),input=$("#input"),send=$("#send");
+  const fileInput=$("#file-input"),sources=$("#sources"),status=$("#status");
+  const reviewSummary=$("#review-summary"),reviewList=$("#review-list"),correctedOutput=$("#corrected-output"),copyCorrected=$("#copy-corrected");
+  const autocomplete=$("#autocomplete"),editorMeta=$("#editor-meta"),lineNumbers=$("#line-numbers");
+  const STORAGE_KEY="dev-anabel-session-v2";
+  let runtimeKind="",pythonRuntimeReady=false,pendingPythonCode=null,acItems=[],acIndex=0,autonomousBusy=false,autonomousLastKey="",autonomousTimer=null,saveTimer=null,resizeTimer=null,lastShownLanguage="";
+  const state={
+    theme:"green",color:"#00ff33",busy:false,queued:false,sandboxUrl:"",language:"auto",
+    history:[
+      "ANABEL: sistema iniciado.",
+      "ANABEL: bot local sem LLM.",
+      "ANABEL: conhecimento, regras, pesquisa e ferramentas ativas."
+    ],
+    sourceList:[],snapshots:[],ideas:[],selectedIdea:null,pendingAction:null,
+    autonomous:{enabled:true,lastQuery:"",lastReason:"",candidateCount:0,selected:"",score:0,lastAt:0,alternatives:[],plan:null},
+    review:{issues:[],improvements:[],correctedCode:""}
+  };
+
+  const norm=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+  const esc=v=>String(v).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c]));
+  function log(v){state.history.push(String(v));drawLater();}
+  function drawLater(){if(state.queued)return;state.queued=requestAnimationFrame(()=>{state.queued=false;draw();});}
+  function draw(){
+    const r=canvas.getBoundingClientRect(),d=Math.max(1,Math.min(2,devicePixelRatio||1));
+    const w=Math.max(1,Math.floor((r.width||450)*d)),h=Math.max(1,Math.floor((r.height||450)*d));
+    if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
+    const cw=r.width||450,ch=r.height||450;
+    ctx.setTransform(d,0,0,d,0,0);ctx.fillStyle="#000";ctx.fillRect(0,0,cw,ch);
+    ctx.fillStyle=state.color;ctx.shadowColor=state.color;ctx.shadowBlur=3;ctx.font="12px monospace";ctx.textBaseline="top";
+    const lh=17,max=Math.max(1,Math.floor((ch-12)/lh)),start=Math.max(0,state.history.length-max),chars=Math.max(30,Math.floor((cw-18)/7.1));
+    for(let i=start;i<state.history.length;i++){let t=state.history[i].replace(/\s+/g," ").trim();if(t.length>chars)t=t.slice(0,chars-1)+"…";ctx.fillText(t,9,7+(i-start)*lh);}
+    ctx.shadowBlur=0;
+  }
+  function switchTab(i){
+    i=Number(i);if(![0,1,2].includes(i))return;
+    qsa(".tab").forEach((b,n)=>{b.classList.toggle("active",n===i);b.setAttribute("aria-selected",String(n===i));});
+    qsa(".panel").forEach((p,n)=>p.classList.toggle("visible",n===i));
+    if(i===1){updateLineNumbers();saveSessionDebounced();}
+    if(i===0)drawLater();
+  }
+  function theme(v){
+    state.theme=v==="amber"?"amber":"green";
+    document.documentElement.toggleAttribute("data-theme",state.theme==="amber");
+    if(state.theme==="amber")state.color="#ffb000";else state.color="#00ff33";
+    const title=sandbox.contentDocument?.getElementById("title");if(title)title.style.color=state.color;
+    drawLater();
+  }
+  function snapshot(label){state.snapshots.push({label,code:editor.value});if(state.snapshots.length>40)state.snapshots.shift();}
+  function undo(){
+    const x=state.snapshots.pop();if(!x){log("ANABEL: não há estado anterior.");return;}
+    editor.value=x.code;log("ANABEL: estado restaurado → "+x.label);switchTab(1);
+  }
+  function revokeSandbox(){
+    const oldUrl=state.sandboxUrl;
+    state.sandboxUrl="";
+    if(oldUrl){try{sandbox.src="about:blank";}catch(e){}try{URL.revokeObjectURL(oldUrl);}catch(e){}}
+    runtimeKind="";pythonRuntimeReady=false;pendingPythonCode=null;
+  }
+  function detectLanguage(code){
+    const s=String(code||"").trimStart();
+    if(/^(<!doctype html|<html\b|<body\b|<canvas\b|<style\b|<script\b)/i.test(s)||/<(?:div|main|section|head|title)\b/i.test(s))return "html";
+    if(/^(from\s+[A-Za-z_][\w.]*\s+import|import\s+[A-Za-z_][\w.]*)/m.test(s)||/^(def|class)\s+[A-Za-z_]\w*\s*\(?/m.test(s)||/\bprint\s*\(/.test(s)||/if\s+__name__\s*==\s*["']__main__["']/.test(s))return "python";
+    if(/\b(const|let|var)\s+[A-Za-z_$][\w$]*\s*=|=>|document\.\w+|console\.log\s*\(/.test(s))return "javascript";
+    return state.language==="python"?"python":"javascript";
+  }
+  function setLanguage(lang){
+    state.language=lang||"auto";
+    const shown=state.language==="auto"?detectLanguage(editor.value):state.language;
+    if(lastShownLanguage&&lastShownLanguage!==shown)autocomplete.classList.remove("show");
+    lastShownLanguage=shown;
+    if(editorMeta)editorMeta.textContent="LINGUAGEM: "+String(shown).toUpperCase()+" · AUTOCOMPLETE: CTRL+ESPAÇO / TAB";
+  }
+  function updateLineNumbers(){
+    if(!lineNumbers)return;
+    const count=Math.max(1,(editor.value.match(/\n/g)||[]).length+1);
+    lineNumbers.textContent=Array.from({length:count},(_,i)=>String(i+1)).join("\n");
+    lineNumbers.scrollTop=editor.scrollTop;
+  }
+  function saveSession(){
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify({code:editor.value,language:state.language,theme:state.theme,savedAt:Date.now()}));}catch(e){}
+  }
+  function saveSessionDebounced(){
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(()=>{saveTimer=null;saveSession();},250);
+  }
+  function restoreSession(){
+    try{
+      const raw=localStorage.getItem(STORAGE_KEY);
+      if(!raw)return false;
+      const saved=JSON.parse(raw);
+      if(!saved||typeof saved.code!=="string"||!saved.code.trim())return false;
+      editor.value=saved.code;
+      if(saved.language)state.language=saved.language;
+      if(saved.theme)theme(saved.theme);
+      setLanguage(state.language||"auto");
+      updateLineNumbers();
+      log("ANABEL: Bem-vindo de volta! Recuperei o código da última sessão.");
+      status.textContent="Sessão anterior recuperada automaticamente.";
+      return true;
+    }catch(e){return false;}
+  }
+
+  function pythonRuntimeHTML(localBase=""){
+    const pyodideBases=[localBase,"https://cdn.jsdelivr.net/pyodide/v314.0.7/full/","https://cdn.jsdelivr.net/pyodide/v0.29.5/full/"].filter((x,i,a)=>x&&!a.slice(0,i).includes(x));
+    const boot=[
+      "(async()=>{",
+      'const state=document.getElementById("state"),out=document.getElementById("out"),NL=String.fromCharCode(10),bases='+JSON.stringify(pyodideBases)+';',
+      'let pyodide=null,lastError=null;',
+      'function send(type,data){parent.postMessage(Object.assign({source:"dev-anabel-python",type:type},data||{}),"*")}',
+      'function emit(kind,value){const s=String(value==null?"":value);if(s)out.textContent+=s;send("output",{kind:kind,text:s})}',
+      'function loadScript(src){return new Promise(function(resolve,reject){const s=document.createElement("script");s.src=src;s.onload=function(){resolve(s)};s.onerror=function(){reject(new Error("Falha ao carregar "+src))};document.head.appendChild(s)})}',
+      'async function bootBase(base){state.textContent="PYTHON: tentando "+base+"…";let script=null;try{script=await loadScript(base+"pyodide.js");if(typeof window.loadPyodide!=="function")throw new Error("loadPyodide indisponível");pyodide=await window.loadPyodide({indexURL:base});return true}catch(err){lastError=err;if(script&&script.parentNode)script.parentNode.removeChild(script);try{delete window.loadPyodide}catch(e){}pyodide=null;return false}}',
+      'try{let loaded=false;for(const base of bases){loaded=await bootBase(base);if(loaded){state.textContent="PYTHON: ambiente pronto";send("ready",{version:String(pyodide.runPython("import sys;sys.version"))});break}}if(!loaded)throw lastError||new Error("Nenhuma distribuição Pyodide pôde ser carregada")}catch(err){state.textContent="PYTHON: falha ao inicializar";send("error",{error:String(err)})}',
+      'window.addEventListener("message",async function(e){const d=e.data||{};if(d.source!=="dev-anabel-python"||!pyodide||d.action!=="run")return;state.textContent="PYTHON: executando…";try{await pyodide.loadPackagesFromImports(String(d.code||""));const result=await pyodide.runPythonAsync(String(d.code||""));if(result!==undefined&&result!==null)emit("result",String(result)+NL);send("done",{ok:true})}catch(err){emit("stderr",String(err)+NL);send("done",{ok:false,error:String(err)})}state.textContent="PYTHON: pronto"});',
+      '})()'
+    ].join("");
+    const closeScript="<"+"/script>";
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Python Runtime</title><style>body{margin:0;background:#000;color:#00ff33;font:12px monospace;padding:10px}#state{border:1px solid #333;padding:7px;margin-bottom:8px}pre{white-space:pre-wrap;margin:0;border:1px solid #333;background:#050505;padding:10px;min-height:220px;overflow:auto}</style></head><body><div id="state">PYTHON: carregando…</div><pre id="out"></pre><script>'+boot+closeScript+'</body></html>';
+  }
+
+  function postPython(action,code){
+    if(!sandbox.contentWindow){log("ANABEL: ambiente Python ainda não está disponível.");return false;}
+    sandbox.contentWindow.postMessage({source:"dev-anabel-python",action,code},"*");return true;
+  }
+  function runPython(code){
+    const source=String(code||"");
+    if(!source.trim()){log("ANABEL: não há código Python para executar.");return false;}
+    switchTab(2);status.textContent=pythonRuntimeReady?"Python pronto.":"Carregando ambiente Python…";
+    if(runtimeKind!=="python"){
+      revokeSandbox();
+      runtimeKind="python";pythonRuntimeReady=false;pendingPythonCode=source;
+      state.sandboxUrl=URL.createObjectURL(new Blob([pythonRuntimeHTML(new URL("./pyodide/",location.href).href)],{type:"text/html;charset=utf-8"}));
+      sandbox.src=state.sandboxUrl;
+      log("ANABEL: conectando ao ambiente Python (Pyodide/CPython WebAssembly)…");
+      return true;
+    }
+    if(pythonRuntimeReady){pendingPythonCode=null;postPython("run",source);log("ANABEL: Python enviado ao ambiente persistente.");}
+    else{pendingPythonCode=source;log("ANABEL: Python aguardando o ambiente ficar pronto.");}
+    return true;
+  }
+  function webRuntimeHTML(code,language){
+    const source=String(code||"");
+    const closeSeq="<"+"/script";
+    const closeScript=closeSeq+">";
+    const safeSource=source.split(closeSeq).join("<\\/script").split("</SCRIPT").join("<\\/SCRIPT");
+    const bootstrap='<script>(()=>{addEventListener("error",e=>parent.postMessage({source:"dev-anabel-runtime",type:"error",error:String(e.message||"erro no runtime")},"*"));addEventListener("unhandledrejection",e=>parent.postMessage({source:"dev-anabel-runtime",type:"error",error:String(e.reason||"Promise rejeitada")},"*"));const oldLog=console.log.bind(console);console.log=(...a)=>{oldLog(...a);parent.postMessage({source:"dev-anabel-runtime",type:"log",text:a.map(String).join(" ")},"*")};})()'+closeScript;
+    if(language==="css"){
+      return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+bootstrap+'<style>'+source.replaceAll("</style","<\\/style").replaceAll("</STYLE","<\\/STYLE")+'</style></head><body><div id="app"></div></body></html>';
+    }
+    const module=/^\\s*(?:import|export)\\b/m.test(source);
+    const scriptTag=module?'<script type="module">':'<script>';
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+bootstrap+'</head><body><div id="app"></div>'+scriptTag+safeSource+closeScript+'</body></html>';
+  }
+  function run(code){
+    if(!String(code||"").trim()){log("ANABEL: não há código para executar.");return false;}
+    const language=state.language==="auto"?detectLanguage(code):state.language;
+    if(language==="python")return runPython(code);
+    revokeSandbox();
+    runtimeKind="html";
+    const source=String(code);
+    const themed=state.theme==="amber"?source.replaceAll("#00ff33","#ffb000").replaceAll("#0f3","#ffb000"):source;
+    const full=/<!doctype html|<html\\b/i.test(themed.trim())?themed:webRuntimeHTML(themed,language);
+    state.sandboxUrl=URL.createObjectURL(new Blob([full],{type:"text/html;charset=utf-8"}));
+    sandbox.src=state.sandboxUrl;log("ANABEL: código "+(language==="javascript"?"JavaScript":"web")+" executado no Sandbox isolado.");switchTab(2);status.textContent="Sandbox web ativo.";return true;
+  }
+  function post(command){
+    if(!sandbox.contentWindow){log("ANABEL: Sandbox ainda não está pronto.");return;}
+    sandbox.contentWindow.postMessage({source:"dev-anabel",command},"*");
+  }
+  function renderSources(){
+    if(!state.sourceList.length){sources.classList.remove("show");sources.innerHTML="";return;}
+    sources.innerHTML=state.sourceList.slice(-15).map(s=>'<div class="source"><span>['+esc(s.kind)+']</span> <a href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer">'+esc(s.title)+'</a><div>'+esc(s.note)+'</div></div>').join("");
+    sources.classList.add("show");
+  }
+  function addSource(s){
+    if(!s?.url||state.sourceList.some(x=>x.url===s.url))return;
+    state.sourceList.push({kind:s.kind||"WEB",title:s.title||s.url,url:s.url,note:s.note||""});renderSources();
+  }
+  async function handleFiles(files){
+    const attached=[];
+    for(const file of [...(files||[])]){
+      const ext=(file.name.split(".").pop()||"").toLowerCase();
+      const allowed=["html","htm","js","mjs","css","json","txt","md","xml","svg","csv","py","java","c","cpp","h","hpp","cs","ts","tsx","jsx"];
+      if(!allowed.includes(ext)){log("ANABEL: formato não suportado → "+file.name);continue;}
+      try{
+        snapshot("antes de anexar "+file.name);
+        editor.value=await file.text();
+        state.language=ext==="py"?"python":"auto";
+        setLanguage(state.language);
+        attached.push({name:file.name,ext,code:editor.value});
+        log("SISTEMA: arquivo anexado → "+file.name);
+      }catch(e){console.error(e);log("ANABEL: falha ao ler "+file.name);}
+    }
+    switchTab(1);fileInput.value="";
+    const codeFile=attached.find(x=>/^(js|mjs|ts|tsx|jsx|py|java|c|cpp|cs|json)$/.test(x.ext));
+    if(codeFile){
+      clearTimeout(autonomousTimer);
+      autonomousTimer=setTimeout(()=>autonomousFileTrigger(codeFile),180);
+    }
+  }
+  function isCodeUrl(url){
+    return /\.(?:js|mjs|css|py|ts|tsx|jsx|json|html|htm|xml|svg|c|cpp|h|hpp|cs)(?:[?#].*)?$/i.test(String(url||""));
+  }
+  function decodeHtmlText(text){
+    const box=document.createElement("textarea");
+    box.innerHTML=String(text||"");
+    return box.value;
+  }
+  function extractCodeBlocks(text,url=""){
+    const raw=String(text||"");
+    const blocks=[];
+    const fenced=/```([^\n`]*)\n([\s\S]*?)```/g;
+    let m;
+    while((m=fenced.exec(raw))){
+      const language=(m[1]||"").trim().toLowerCase();
+      const code=decodeHtmlText(m[2]).trim();
+      if(code.length>=12)blocks.push({language,code});
+    }
+    const html=/<pre[^>]*>\s*<code[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi;
+    while((m=html.exec(raw))){
+      const code=decodeHtmlText(m[1].replace(/<[^>]+>/g,"")).trim();
+      if(code.length>=12)blocks.push({language:"",code});
+    }
+    if(!blocks.length&&isCodeUrl(url)&&raw.trim().length>=30)blocks.push({language:"",code:raw.trim()});
+    return blocks.filter((x,i,a)=>a.findIndex(y=>y.code===x.code)===i).sort((x,y)=>y.code.length-x.code.length).slice(0,8);
+  }
+  function guessCodeLanguage(block,url="",hint=""){
+    const h=norm(hint),ext=String(url||"").match(/\.([a-z0-9]+)(?:[?#].*)?$/i)?.[1]?.toLowerCase();
+    if(h==="py"||h==="python"||ext==="py")return "python";
+    if(["ts","tsx"].includes(ext)||/typescript/.test(h))return "typescript";
+    if(["js","mjs","jsx"].includes(ext)||/javascript|js\b/.test(h))return "javascript";
+    if(ext==="css"||h==="css")return "css";
+    if(ext==="json"||h==="json")return "json";
+    if(["html","htm","xml","svg"].includes(ext)||/html|xml|svg/.test(h))return "html";
+    const s=String(block||"");
+    if(/(^|\n)\s*(from\s+\w+\s+import|import\s+\w+|def\s+\w+|print\s*\()/m.test(s))return "python";
+    if(/\b(const|let|var)\b|=>|document\.\w+|console\.log\s*\(/.test(s))return "javascript";
+    if(/<(!doctype|html|body|div|canvas|script|style)\b/i.test(s))return "html";
+    if(/^[^{]+\{[^}]*:[^}]*\}/m.test(s))return "css";
+    return "javascript";
+  }
+  function deliverCode(code,language,title,url){
+    const source=String(code||"").trim();
+    if(!source){log("ANABEL: não encontrei um bloco de código utilizável.");return false;}
+    snapshot("antes de entregar código pesquisado");
+    editor.value=source;
+    correctedOutput.value=source;
+    state.review.correctedCode=source;
+    state.language=language||guessCodeLanguage(source,url);
+    setLanguage(state.language);
+    switchTab(1);
+    if(url)addSource({kind:"CÓDIGO",title:title||"Código encontrado",url,note:"Código extraído da fonte pesquisada e carregado no editor."});
+    log("ANABEL: código entregue no editor → "+(title||"fonte pesquisada"));
+    log("ANABEL: linguagem detectada → "+String(state.language).toUpperCase()+" · "+source.length+" caracteres.");
+    status.textContent="Código pesquisado carregado no editor.";
+    return true;
+  }
+  async function readWebPage(url,opts={}){
+    const original=String(url||"").trim();
+    if(!original)throw new Error("URL vazia");
+    const timeout=opts.timeout||15000;
+    const targets=opts.codeFirst?[original,"https://r.jina.ai/"+original]:["https://r.jina.ai/"+original,original];
+    let lastErr=null;
+    for(const target of [...new Set(targets)]){
+      try{
+        const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
+        const r=await fetch(target,{signal:controller.signal,redirect:"follow"});
+        clearTimeout(timer);
+        if(!r.ok)throw new Error("HTTP "+r.status);
+        const text=await r.text();
+        if(text.trim())return {url:original,text,reader:target.startsWith("https://r.jina.ai/"),resolved:r.url||target};
+      }catch(e){lastErr=e;}
+    }
+    throw lastErr||new Error("Não foi possível ler a página");
+  }
+  async function readGithubRepoCode(url){
+    const m=String(url||"").match(/^https?:\/\/github\.com\/([^/]+)\/([^/#?]+)\/?(?:[?#].*)?$/i);
+    if(!m)return [];
+    const owner=m[1],repo=m[2];
+    try{
+      const tree=await httpJson("https://api.github.com/repos/"+encodeURIComponent(owner)+"/"+encodeURIComponent(repo)+"/git/trees/HEAD?recursive=1",12000);
+      const allow=/\.(?:js|mjs|ts|tsx|jsx|py|html|htm|css|json|java|c|cpp|h|hpp|cs|go|rs|php|rb)$/i;
+      const files=(tree.tree||[]).filter(x=>x.type==="blob"&&allow.test(x.path||"")&&!/(node_modules|dist|build|vendor|coverage|\.min\.)/i.test(x.path||"")).sort((x,y)=>x.path.length-y.path.length).slice(0,6);
+      const out=[];
+      for(const file of files){
+        try{
+          const raw="https://raw.githubusercontent.com/"+owner+"/"+repo+"/HEAD/"+file.path.split("/").map(encodeURIComponent).join("/");
+          const data=await readWebPage(raw,{codeFirst:true,timeout:12000});
+          const block=extractCodeBlocks(data.text,raw)[0];
+          const code=block?.code||data.text;
+          if(code&&code.length>=30)out.push({title:owner+"/"+repo+" / "+file.path,url:raw,code,language:guessCodeLanguage(code,raw,block?.language)});
+        }catch(e){}
+      }
+      return out;
+    }catch(e){return [];}
+  }
+  async function loadUrl(url){
+    let target=url;
+    try{
+      const u=new URL(url),p=u.pathname.split("/").filter(Boolean),i=p.indexOf("blob");
+      if(u.hostname==="github.com"&&i>=2&&p.length>i+2)target="https://raw.githubusercontent.com/"+p[0]+"/"+p[1]+"/"+p[i+1]+"/"+p.slice(i+2).join("/");
+    }catch(e){}
+    status.textContent="Lendo site: "+target;
+    try{
+      const data=await readWebPage(target,{codeFirst:isCodeUrl(target)});
+      const blocks=extractCodeBlocks(data.text,target);
+      if(blocks.length){
+        const block=blocks[0];
+        const lang=guessCodeLanguage(block.code,target,block.language);
+        deliverCode(block.code,lang,target,data.resolved||target);
+        addSource({kind:"SITE",title:target,url:target,note:data.reader?"Página lida pelo Reader; código extraído automaticamente.":"Arquivo-fonte carregado diretamente."});
+        return;
+      }
+      snapshot("antes do carregamento remoto");
+      editor.value=data.text.slice(0,120000);
+      correctedOutput.value="";
+      state.language="auto";setLanguage("auto");switchTab(1);
+      addSource({kind:"SITE",title:target,url:target,note:data.reader?"Conteúdo da página lido pelo Reader.":"Conteúdo remoto carregado diretamente."});
+      log("ANABEL: site lido, mas não encontrei bloco de código explícito.");
+      log("ANABEL: conteúdo colocado no editor para análise.");
+      status.textContent="Site lido.";
+    }catch(e){
+      console.error(e);
+      log("ANABEL: não consegui ler o site. A origem pode exigir autenticação, bloquear automação ou estar indisponível.");
+      status.textContent="Falha ao ler o site.";
+    }
+  }
+  function exportCode(){
+    if(!editor.value.trim()){log("ANABEL: buffer vazio.");return;}
+    const url=URL.createObjectURL(new Blob([editor.value],{type:"text/html;charset=utf-8"})),a=document.createElement("a");
+    a.href=url;a.download=(state.language==="python"||detectLanguage(editor.value)==="python")?"dev_anabel.py":"dev_anabel_export.html";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),0);log("ANABEL: exportação concluída.");
+  }
+  Object.assign(window,{switchTab,changeTheme:theme,exportCode,handleFileAttach:i=>handleFiles(i?.files||[]),DevAnabel:{state,switchTab,theme,run,undo,loadUrl,handleFiles}});
+  function debouncedResize(){
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(()=>{resizeTimer=null;draw();},200);
+  }
+  window.addEventListener("resize",debouncedResize,{passive:true});
+  window.addEventListener("orientationchange",debouncedResize,{passive:true});
+  window.addEventListener("beforeunload",()=>{clearTimeout(resizeTimer);clearTimeout(saveTimer);saveSession();revokeSandbox();});
+  sandbox.addEventListener("load",()=>{
+    const t=sandbox.contentDocument?.getElementById("title");if(t)t.style.color=state.color;
+    if(runtimeKind==="python")status.textContent="Ambiente Python carregado; aguardando CPython…";
+  });
+  window.addEventListener("message",e=>{
+    const d=e.data;if(!d||e.source!==sandbox.contentWindow)return;
+    if(d.source==="dev-anabel-runtime"){
+      if(d.type==="log")log("RUNTIME: "+String(d.text||""));
+      if(d.type==="error"){
+        const runtimeError=String(d.error||"falha desconhecida");
+        status.textContent="Erro no código executado.";
+        log("ERRO DE EXECUÇÃO: "+runtimeError);
+        clearTimeout(autonomousTimer);
+        autonomousTimer=setTimeout(()=>autonomousSearch(inferSearchTopic(editor.value,runtimeError),"erro detectado automaticamente"),250);
+      }
+      return;
+    }
+    if(d.source!=="dev-anabel-python")return;
+    if(d.type==="ready"){
+      pythonRuntimeReady=true;status.textContent="Python pronto · estado persistente";
+      log("ANABEL: ambiente Python conectado. "+String(d.version||""));
+      if(pendingPythonCode){const code=pendingPythonCode;pendingPythonCode=null;postPython("run",code);}
+      return;
+    }
+    if(d.type==="output"){
+      const txt=String(d.text||"").trimEnd();
+      if(!txt)return;
+      if(d.kind==="stderr")log("PYTHON ERRO: "+txt);
+      else log("PYTHON: "+txt);
+      return;
+    }
+    if(d.type==="done"){
+      status.textContent=d.ok?"Python execução concluída.":"Python encontrou um erro.";
+    }
+    if(d.type==="error"){
+      pythonRuntimeReady=false;status.textContent="Falha no ambiente Python.";log("PYTHON AMBIENTE: "+String(d.error||"erro desconhecido"));
+    }
+  });
+  fileInput.addEventListener("change",e=>handleFiles(e.target.files));
+  $("#export").addEventListener("click",exportCode);
+  $("#undo").addEventListener("click",undo);
+  $("#theme").addEventListener("change",e=>theme(e.target.value));
+  qsa(".tab").forEach((b,i)=>b.addEventListener("click",()=>switchTab(i)));
+  $("#left").addEventListener("pointerdown",e=>{e.preventDefault();post("left");});
+  $("#fire").addEventListener("pointerdown",e=>{e.preventDefault();post("fire");});
+  $("#right").addEventListener("pointerdown",e=>{e.preventDefault();post("right");});
+  ["dragenter","dragover"].forEach(t=>editor.addEventListener(t,e=>{e.preventDefault();editor.classList.add("drop");}));
+  editor.addEventListener("dragleave",e=>{e.preventDefault();editor.classList.remove("drop");});
+  editor.addEventListener("drop",e=>{e.preventDefault();editor.classList.remove("drop");handleFiles(e.dataTransfer.files);});
+  window.addEventListener("beforeunload",revokeSandbox);
+  draw();
+
+
+  const KB=[
+    {keys:["fetch","fetch javascript"],title:"fetch()",text:"fetch() faz uma requisição de rede e devolve uma Promise com a resposta.",example:"const resposta=await fetch(url);",tip:"Verifique response.ok e trate falhas de rede e CORS.",url:"https://developer.mozilla.org/docs/Web/API/Window/fetch",source:"MDN — Fetch API"},
+    {keys:["async await","async/await"],title:"async/await",text:"async/await torna mais legível o código que espera resultados assíncronos. await espera uma Promise dentro de uma função async.",example:"async function carregar(){ const r=await fetch(url); }",tip:"Use try/catch para tratar falhas.",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/async_function",source:"MDN — async function"},
+    {keys:["array","vetor"],title:"Array",text:"Array é uma lista ordenada. A primeira posição é 0.",example:"const frutas=['maçã','uva'];",tip:"map(), filter() e find() são úteis para transformar e pesquisar listas.",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array",source:"MDN — Array"},
+    {keys:["promise","promises"],title:"Promise",text:"Promise representa uma operação cujo resultado pode chegar depois.",example:"fetch(url).then(r=>r.json());",tip:"async/await costuma facilitar a leitura.",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise",source:"MDN — Promise"},
+    {keys:["canvas","canvas api"],title:"Canvas 2D",text:"Canvas é uma área de desenho controlada por JavaScript. É útil para jogos e visualizações.",example:"const ctx=canvas.getContext('2d');",tip:"Para animações, prefira requestAnimationFrame.",url:"https://developer.mozilla.org/docs/Web/API/CanvasRenderingContext2D",source:"MDN — CanvasRenderingContext2D"},
+    {keys:["dom","document object model"],title:"DOM",text:"DOM é a representação dos elementos HTML que o JavaScript pode ler e alterar.",example:"document.querySelector('h1').textContent='Olá';",tip:"Guarde referências usadas muitas vezes.",url:"https://developer.mozilla.org/docs/Web/API/Document_Object_Model",source:"MDN — DOM"},
+    {keys:["postmessage","post message"],title:"postMessage",text:"postMessage permite enviar mensagens entre janelas e iframes.",example:"frame.contentWindow.postMessage({command:'left'},'*');",tip:"Valide event.source e os dados recebidos antes de agir.",url:"https://developer.mozilla.org/docs/Web/API/Window/postMessage",source:"MDN — postMessage"},
+    {keys:["cors","cross origin"],title:"CORS",text:"CORS controla quando uma página pode ler respostas de outro domínio.",example:"fetch('https://exemplo.com/dados.json');",tip:"O navegador pode bloquear a leitura mesmo quando a URL existe.",url:"https://developer.mozilla.org/docs/Web/HTTP/Guides/CORS",source:"MDN — CORS"},
+    {keys:["var let","var por let","var versus let"],title:"var x let",text:"let tem escopo de bloco. var segue regras antigas de escopo.",example:"let pontos=0; const nome='Anabel';",tip:"Use const quando não houver reatribuição.",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/let",source:"MDN — let"},
+    {keys:["console.log","console log"],title:"console.log()",text:"console.log() envia uma mensagem ao console e é útil durante a depuração.",example:"console.log('teste');",tip:"Remova logs de diagnóstico desnecessários no código final.",url:"https://developer.mozilla.org/docs/Web/API/console/log_static",source:"MDN — console.log()"},
+    {keys:["arrow function","arrow functions","funcao seta","função seta"],title:"Arrow Function",text:"Arrow Function é uma sintaxe curta para funções e tem regras próprias de this.",example:"const dobro=x=>x*2;",tip:"A Anabel só converte automaticamente funções simples com retorno direto.",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Functions/Arrow_functions",source:"MDN — Arrow functions"},
+    {keys:["python","python linguagem"],title:"Python",text:"Python é uma linguagem de alto nível com sintaxe enxuta, indentação significativa e grande ecossistema.",example:"def soma(a,b): return a+b",tip:"Use Ctrl+Espaço para autocomplete e Tab para aceitar uma sugestão.",url:"https://docs.python.org/3/",source:"Python — documentação oficial"},
+    {keys:["def python","funcao python","função python"],title:"def",text:"def cria uma função em Python; o bloco pertence à função pela indentação.",example:"def saudacao(nome): return f\"Olá, {nome}!\"",tip:"Mantenha quatro espaços por nível.",url:"https://docs.python.org/3/reference/compound_stmts.html#function-definitions",source:"Python — Function definitions"},
+    {keys:["list python","lista python"],title:"list",text:"list é uma sequência mutável muito usada em Python.",example:"numeros=[1,2,3]; numeros.append(4)",tip:"Use compreensão de listas quando continuar legível.",url:"https://docs.python.org/3/tutorial/datastructures.html",source:"Python — Data Structures"},
+    {keys:["dict python","dicionario python","dicionário python"],title:"dict",text:"dict associa chaves a valores e é útil para acesso por chave.",example:"aluno={\"nome\":\"Ana\",\"idade\":10}",tip:"Use .get() quando a chave puder não existir.",url:"https://docs.python.org/3/library/stdtypes.html#mapping-types-dict",source:"Python — dict"},
+    {keys:["for python","loop python"],title:"for",text:"for percorre itens de um iterável.",example:"for i in range(5): print(i)",tip:"Itere diretamente sobre os valores quando não precisar do índice.",url:"https://docs.python.org/3/reference/compound_stmts.html#the-for-statement",source:"Python — for statement"},
+    {keys:["if python","condicional python"],title:"if / elif / else",text:"Condicionais escolhem caminhos com base em expressões booleanas.",example:"if nota>=7: print(\"Aprovado\")",tip:"Não esqueça os dois-pontos e a indentação.",url:"https://docs.python.org/3/reference/compound_stmts.html#the-if-statement",source:"Python — if statement"},
+    {keys:["comprehension python","compreensao lista"],title:"List comprehension",text:"Cria listas de forma compacta a partir de um iterável.",example:"pares=[x for x in numeros if x%2==0]",tip:"Evite compreensões longas demais.",url:"https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions",source:"Python — List comprehensions"},
+    {keys:["pip python","instalar pacote python"],title:"pip / pacotes",text:"No ambiente web, imports compatíveis podem ser carregados automaticamente pelo Pyodide.",example:"import numpy as np; print(np.arange(5))",tip:"Pacotes nativos precisam de uma versão compatível com Pyodide.",url:"https://pyodide.org/en/stable/usage/loading-packages.html",source:"Pyodide — Loading packages"},
+    {keys:["try except python","tratamento erro python"],title:"try / except",text:"try/except trata exceções sem encerrar o fluxo.",example:"try: valor=int(entrada)",tip:"Capture exceções específicas.",url:"https://docs.python.org/3/tutorial/errors.html",source:"Python — Errors and Exceptions"},
+    {keys:["import python","modulo python","módulo python"],title:"import",text:"import carrega módulos e nomes disponíveis no ambiente.",example:"import math; print(math.sqrt(25))",tip:"Evite imports com *.",url:"https://docs.python.org/3/reference/import.html",source:"Python — import system"}
+  ];
+
+  const PY_KEYWORDS=["and","as","assert","async","await","break","case","class","continue","def","del","elif","else","except","False","finally","for","from","global","if","import","in","is","lambda","match","None","nonlocal","not","or","pass","raise","return","True","try","while","with","yield"];
+  const PY_BUILTINS=["abs","all","any","bool","dict","dir","enumerate","filter","float","input","int","isinstance","len","list","map","max","min","open","print","range","reversed","round","set","sorted","str","sum","tuple","type","zip","__name__"];
+  const PY_MODULES=["asyncio","collections","datetime","functools","json","math","os","random","re","statistics","time","typing","urllib","pathlib","numpy","pandas","matplotlib"];
+  const PY_METHODS={
+    str:["upper","lower","strip","split","replace","startswith","endswith","find","join","format"],
+    list:["append","extend","insert","remove","pop","clear","index","count","sort","reverse","copy"],
+    dict:["get","keys","values","items","update","pop","setdefault","clear"],
+    set:["add","remove","discard","pop","clear","union","intersection","difference"],
+    math:["sqrt","sin","cos","tan","floor","ceil","pi","e"],
+    random:["random","randint","choice","choices","shuffle","sample"],
+    os:["getcwd","listdir","mkdir","remove","path"],
+    json:["loads","dumps","load","dump"],
+    re:["search","match","findall","sub","split","compile"],
+    pathlib:["Path"]
+  };
+  const PY_SIGNATURES={
+    print:"print(*objects, sep=' ', end='\\n', file=None, flush=False)",
+    len:"len(obj)",
+    range:"range(start, stop[, step])",
+    enumerate:"enumerate(iterable, start=0)",
+    zip:"zip(*iterables)",
+    str:"str(object='')",
+    int:"int(x=0, base=10)",
+    float:"float(x=0)",
+    list:"list(iterable=())",
+    dict:"dict(**kwargs)",
+    sorted:"sorted(iterable, *, key=None, reverse=False)",
+    sum:"sum(iterable, /, start=0)"
+  };
+
+  function currentPythonContext(){
+    const pos=editor.selectionStart||0,before=editor.value.slice(0,pos);
+    const lineStart=before.lastIndexOf("\n")+1,line=before.slice(lineStart);
+    const dot=line.match(/([A-Za-z_]\w*)\.([A-Za-z_]\w*)?$/);
+    const token=(line.match(/([A-Za-z_]\w*)$/)||[])[1]||"";
+    const importCtx=/(?:^|[;\s])(from|import)\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)?$/.exec(line);
+    return {pos,before,line,lineStart,dot,token,importCtx};
+  }
+
+  function localPythonSymbols(){
+    const code=editor.value,out=new Set();
+    for(const re of [/\bdef\s+([A-Za-z_]\w*)/g,/\bclass\s+([A-Za-z_]\w*)/g,/\b([A-Za-z_]\w*)\s*=\s*(?![=])/g,/\bas\s+([A-Za-z_]\w*)/g]){
+      let m;while((m=re.exec(code)))out.add(m[1]);
+    }
+    return [...out];
+  }
+
+  function pythonSuggestions(){
+    const ctx=currentPythonContext();let prefix=ctx.token,list=[];
+    if(ctx.dot){
+      prefix=ctx.dot[2]||"";
+      const methods=PY_METHODS[ctx.dot[1]]||PY_BUILTINS;
+      list=methods.map(x=>({label:x,kind:PY_METHODS[ctx.dot[1]]?"método":"Python"}));
+    }else if(ctx.importCtx){
+      prefix=ctx.importCtx[2]||"";
+      list=PY_MODULES.map(x=>({label:x,kind:"módulo"}));
+    }else{
+      list=PY_KEYWORDS.map(x=>({label:x,kind:"palavra"}))
+        .concat(PY_BUILTINS.map(x=>({label:x,kind:"builtin"})))
+        .concat(PY_MODULES.map(x=>({label:x,kind:"módulo"})))
+        .concat(localPythonSymbols().map(x=>({label:x,kind:"seu código"})));
+    }
+    const p=norm(prefix);
+    return [...new Map(list.filter(x=>!p||norm(x.label).startsWith(p)).map(x=>[x.label,x])).values()].slice(0,14);
+  }
+
+  function placeAutocomplete(){
+    const ctx=currentPythonContext();
+    const lineHeight=parseFloat(getComputedStyle(editor).lineHeight)||17;
+    const lineNo=(ctx.before.match(/\n/g)||[]).length;
+    const col=ctx.before.length-ctx.lineStart;
+    let top=10+lineNo*lineHeight-editor.scrollTop+lineHeight+2;
+    let left=10+Math.min(col,48)*7.2-editor.scrollLeft;
+    top=Math.max(5,Math.min(editor.clientHeight-225,top));
+    left=Math.max(5,Math.min(editor.clientWidth-395,left));
+    autocomplete.style.top=top+"px";autocomplete.style.left=left+"px";
+  }
+
+  function renderAutocomplete(force=false){
+    if(detectLanguage(editor.value)!=="python"){autocomplete.classList.remove("show");return;}
+    const items=pythonSuggestions();
+    if(!items.length&&!force){autocomplete.classList.remove("show");return;}
+    acItems=items;acIndex=Math.min(acIndex,Math.max(0,items.length-1));
+    autocomplete.innerHTML=items.length?items.map((x,i)=>'<div class="ac-item'+(i===acIndex?" selected":"")+'" role="option" aria-selected="'+(i===acIndex?"true":"false")+'" data-ac-index="'+i+'"><span>'+esc(x.label)+'</span><span class="ac-kind">'+esc(x.kind)+'</span></div>').join(""):'<div class="ac-empty">Nenhuma sugestão.</div>';
+    autocomplete.classList.add("show");placeAutocomplete();
+  }
+
+  function acceptAutocomplete(index){
+    if(!acItems.length)return false;
+    const item=acItems[Math.max(0,Math.min(acItems.length-1,index??acIndex))];
+    const ctx=currentPythonContext();
+    const tokenLen=ctx.token.length;
+    let start=ctx.pos-tokenLen;
+    if(ctx.dot)start=ctx.lineStart+ctx.line.lastIndexOf(".")+1;
+    editor.setRangeText(item.label,start,ctx.pos,"end");
+    setLanguage("python");autocomplete.classList.remove("show");
+    status.textContent=PY_SIGNATURES[item.label]||"Sugestão aplicada: "+item.label;
+    return true;
+  }
+
+  function pythonIndent(e){
+    if(detectLanguage(editor.value)!=="python")return false;
+    if(e.key==="Tab"){
+      e.preventDefault();
+      if(autocomplete.classList.contains("show")&&acItems.length)return acceptAutocomplete();
+      const a=editor.selectionStart,b=editor.selectionEnd,selected=editor.value.slice(a,b);
+      const currentLine=editor.value.slice(0,a).split("\n").pop()||"";
+      const indent=(currentLine.match(/^\s*/)||[""])[0];
+      if(a!==b)editor.setRangeText(selected.split("\n").map(x=>indent+"    "+x).join("\n"),a,b,"select");
+      else editor.setRangeText("    ",a,b,"end");
+      renderAutocomplete(false);return true;
+    }
+    if(e.key==="Enter"){
+      if(autocomplete.classList.contains("show")&&acItems.length){e.preventDefault();return acceptAutocomplete();}
+      e.preventDefault();
+      const pos=editor.selectionStart,before=editor.value.slice(0,pos),line=before.slice(before.lastIndexOf("\n")+1);
+      const base=(line.match(/^\s*/)||[""])[0];
+      const extra=/:\s*$/.test(line)?"    ":"";
+      let text="\n"+base+extra;
+      editor.setRangeText(text,pos,editor.selectionEnd,"end");
+      const newLine=editor.value.slice(0,editor.selectionStart).split("\n").pop()||"";
+      if(/^\s*(elif|else|except|finally)\b/.test(newLine)&&/^(\s*)(elif|else|except|finally)\b/.test(newLine)){
+        const currentIndent=(newLine.match(/^\s*/)||[""])[0];
+        if(currentIndent.length>=4){
+          const p=editor.selectionStart-currentIndent.length;
+          editor.setRangeText("",p,p+4,"end");
+        }
+      }
+      renderAutocomplete(false);return true;
+    }
+    return false;
+  }
+
+  const IDEAS=[
+    {title:"Reino dos 16 Turnos",pitch:"Transforme uma vila em um reino em 16 turnos; economia, população, defesa e expansão disputam o mesmo orçamento.",mechanics:["recursos","território","defesa","eventos","16 turnos"]},
+    {title:"Fronteira de Pixels",pitch:"Controle um posto avançado. Explore, construa defesa ou negocie recursos com regiões vizinhas.",mechanics:["mapa","recursos","defesa","negociação"]},
+    {title:"Comandante 8-Bit",pitch:"Controle unidades em uma grade e capture pontos estratégicos antes do limite de rodadas.",mechanics:["grade","energia","captura","turnos"]},
+    {title:"Colônia Pixel",pitch:"Mantenha uma pequena colônia viva enquanto comida, população e defesa mudam a cada ciclo.",mechanics:["sobrevivência","recursos","eventos","população"]},
+    {title:"Núcleo de Guerra",pitch:"Reorganize energia e posições a cada rodada para romper o núcleo adversário.",mechanics:["energia","posicionamento","ataque","rodadas"]}
+  ];
+
+  function known(query){
+    const n=norm(query);let best=null,bestScore=0;
+    KB.forEach(k=>{let score=0;k.keys.forEach(key=>{const nk=norm(key);if(n.includes(nk))score+=nk.length;});if(score>bestScore){bestScore=score;best=k;}});
+    return best;
+  }
+
+  async function httpJson(url,ms=10000){
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),ms);
+    try{const r=await fetch(url,{signal:controller.signal});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json();}
+    finally{clearTimeout(timer);}
+  }
+
+  async function research(query){
+    const q=String(query||"").trim();
+    if(!q){log("ANABEL: informe o assunto da pesquisa.");return [];}
+    status.textContent="Pesquisando: "+q;
+    log("ANABEL: pesquisa na rede → "+q);
+    const urls=[
+      ["WIKIPEDIA","https://pt.wikipedia.org/w/rest.php/v1/search/page?q="+encodeURIComponent(q)+"&limit=5"],
+      ["STACKOVERFLOW","https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=relevance&q="+encodeURIComponent(q)+"&site=pt.stackoverflow&pagesize=5&filter=default"],
+      ["GITHUB","https://api.github.com/search/repositories?q="+encodeURIComponent(q)+"&per_page=5&sort=stars&order=desc"]
+    ];
+    const result=await Promise.allSettled(urls.map(x=>httpJson(x[1])));
+    const found=[],seen=new Set();
+    result.forEach((r,i)=>{
+      if(r.status!=="fulfilled")return;
+      const kind=urls[i][0],data=r.value;
+      const items=kind==="WIKIPEDIA"?(data.pages||[]).map(x=>({title:x.title||x.key,url:x.content_urls?.desktop?.page||("https://pt.wikipedia.org/wiki/"+encodeURIComponent(x.key||x.title)),note:x.description||"",kind})):
+        kind==="STACKOVERFLOW"?(data.items||[]).map(x=>({title:x.title,url:x.link,note:(x.tags||[]).join(", "),kind})):
+        (data.items||[]).map(x=>({title:x.full_name,url:x.html_url,note:(x.stargazers_count||0)+" stars · "+(x.description||"sem descrição"),kind}));
+      items.forEach(x=>{if(x.url&&!seen.has(x.url)){seen.add(x.url);found.push(x);}});
+    });
+    found.slice(0,10).forEach(addSource);
+    log("ANABEL: pesquisa concluída → "+Math.min(found.length,10)+" referência(s).");
+    status.textContent=found.length+" referência(s).";
+    return found.slice(0,10);
+  }
+
+  function cleanSearchTopic(query){
+    let q=String(query||"").replace(/\s+/g," ").trim();
+    q=q.replace(/^(anabel[\s,:-]*)/i,"");
+    q=q.replace(/\b(?:procure|encontre|busque|ache|pesquise|pesquisar|buscar|busca)\b/gi," ");
+    q=q.replace(/\b(?:me\s+)?(?:de|dê|traga|entregue|entregar|mostre|mostre-me)\b/gi," ");
+    q=q.replace(/\b(?:um|uma|o|a)\s+(?:codigo|código|script|exemplo)\b/gi," ");
+    q=q.replace(/\s+/g," ").trim();
+    return q||String(query||"").trim();
+  }
+
+  function inferSearchLanguage(query){
+    const n=norm(query);
+    if(/\bpython\b|\bpyodide\b|\bdjango\b|\bflask\b|\bpandas\b|\bnumpy\b/.test(n))return "python";
+    if(/\btypescript\b|\btsx\b/.test(n))return "typescript";
+    if(/\bjavascript\b|\bjs\b|\bnode(?:\.js)?\b|\bcanvas\b|\bdom\b/.test(n))return "javascript";
+    if(/\bcss\b|\bstylesheet\b/.test(n))return "css";
+    if(/\bhtml\b|\bweb\b|\bfrontend\b/.test(n))return "html";
+    return "";
+  }
+
+  function buildSearchPlan(query){
+    const topic=cleanSearchTopic(query);
+    const language=inferSearchLanguage(topic);
+    const languageHint=language?language+" ":"";
+    const terms=[topic];
+    if(language)terms.push(topic+" example implementation "+language);
+    else terms.push(topic+" example implementation");
+    terms.push(topic+" github repository");
+    terms.push(topic+" documentation "+languageHint+"guide".replace(/\s+/g," ").trim());
+    return {
+      topic,
+      language,
+      terms:[...new Set(terms.map(x=>x.replace(/\s+/g," ").trim()))].filter(Boolean).slice(0,4),
+      sources:["GITHUB","STACKOVERFLOW","DOCS"]
+    };
+  }
+
+  function documentationRefs(query){
+    const n=norm(query),docs=[];
+    if(/canvas|getcontext|drawimage|requestanimationframe/.test(n))docs.push({
+      kind:"DOCS",title:"MDN — Canvas 2D",
+      url:"https://developer.mozilla.org/pt-BR/docs/Web/API/CanvasRenderingContext2D",
+      note:"Documentação oficial da API Canvas 2D."
+    });
+    if(/fetch|http|rede|network|cors|cross.?origin/.test(n))docs.push({
+      kind:"DOCS",title:"MDN — Fetch API",
+      url:"https://developer.mozilla.org/pt-BR/docs/Web/API/Window/fetch",
+      note:"Documentação oficial da Fetch API."
+    });
+    if(/cors|cross.?origin/.test(n))docs.push({
+      kind:"DOCS",title:"MDN — CORS",
+      url:"https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Guides/CORS",
+      note:"Documentação oficial sobre CORS."
+    });
+    if(/dom|queryselector|event|touch|pointer/.test(n))docs.push({
+      kind:"DOCS",title:"MDN — DOM",
+      url:"https://developer.mozilla.org/pt-BR/docs/Web/API/Document_Object_Model",
+      note:"Documentação oficial do DOM."
+    });
+    if(/python|pyodide|django|flask|pandas|numpy/.test(n))docs.push({
+      kind:"DOCS",title:"Python — Documentação oficial",
+      url:"https://docs.python.org/pt-br/3/",
+      note:"Documentação oficial da linguagem Python."
+    });
+    if(/javascript|javascript|ecmascript|promise|async|await/.test(n))docs.push({
+      kind:"DOCS",title:"MDN — JavaScript",
+      url:"https://developer.mozilla.org/pt-BR/docs/Web/JavaScript",
+      note:"Documentação oficial de JavaScript."
+    });
+    return docs;
+  }
+
+  async function documentationSearch(query){
+    const q=String(query||"").trim();
+    if(!q)return [];
+    const searchPages=[
+      "https://developer.mozilla.org/pt-BR/search?q="+encodeURIComponent(q),
+      "https://docs.python.org/pt-br/3/search.html?q="+encodeURIComponent(q)
+    ];
+    const out=[];
+    const seen=new Set();
+    const add=(x)=>{
+      if(!x?.url||seen.has(x.url))return;
+      seen.add(x.url);
+      out.push({...x,kind:"DOCS"});
+    };
+    const pages=await Promise.allSettled(searchPages.map(url=>readWebPage(url,{timeout:10000})));
+    pages.forEach((r,i)=>{
+      if(r.status!=="fulfilled")return;
+      const text=String(r.value.text||"");
+      const patterns=[
+        /https:\/\/developer\.mozilla\.org\/(?:pt-BR|en-US)\/docs\/[A-Za-z0-9_~:/?#[\]@!$&'()*+,;=%.-]+/gi,
+        /https:\/\/docs\.python\.org\/(?:pt-br|3)\/[A-Za-z0-9_~:/?#[\]@!$&'()*+,;=%.-]+/gi
+      ];
+      for(const re of patterns){
+        const matches=text.match(re)||[];
+        matches.forEach(url=>{
+          add({
+            title:(url.split("/").filter(Boolean).pop()||"Documentação").replace(/[-_]/g," "),
+            url:url.replace(/[),.;]+$/,""),
+            note:i===0?"Documentação MDN encontrada pela busca online.":"Documentação Python encontrada pela busca online."
+          });
+        });
+      }
+    });
+    documentationRefs(q).forEach(add);
+    return out.slice(0,8);
+  }
+
+  function searchVariations(query){
+    return buildSearchPlan(query).terms;
+  }
+
+  async function searchSource(term,source){
+    const q=String(term||"").trim();
+    if(!q)return [];
+    if(source==="GITHUB"){
+      try{
+        const data=await httpJson("https://api.github.com/search/repositories?q="+encodeURIComponent(q)+"&per_page=5&sort=stars&order=desc",12000);
+        return (data.items||[]).map(x=>({
+          kind:"GITHUB",
+          title:x.full_name,
+          url:x.html_url,
+          note:(x.stargazers_count||0)+" stars · "+(x.language||"sem linguagem")+" · "+(x.description||"sem descrição")
+        })).filter(x=>x.url);
+      }catch(e){return [];}
+    }
+    if(source==="STACKOVERFLOW"){
+      try{
+        const data=await httpJson("https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=relevance&q="+encodeURIComponent(q)+"&site=stackoverflow&pagesize=5&filter=default",12000);
+        return (data.items||[]).map(x=>({
+          kind:"STACKOVERFLOW",
+          title:x.title,
+          url:x.link,
+          note:(x.tags||[]).join(", ")
+        })).filter(x=>x.url);
+      }catch(e){return [];}
+    }
+    return await documentationSearch(q);
+  }
+
+  function codeQualityScore(code,language){
+    const s=String(code||"");
+    const m=mask(s);
+    let score=Math.min(25,Math.floor(s.length/80));
+    const reasons=[];
+    if(s.length>=160){score+=8;reasons.push("completude");}
+    if(/function\s+\w+|=>|\bdef\s+\w+/.test(m)){score+=10;reasons.push("estrutura modular");}
+    if(/try\s*\{|try:|catch\s*\(|response\.ok|throw\s+/.test(m)){score+=8;reasons.push("tratamento de erros");}
+    if(/addEventListener|requestAnimationFrame|async\s+|await\s+/.test(m)){score+=6;reasons.push("eventos/fluxo assíncrono");}
+    if(/\bconst\b|\blet\b|===|!==/.test(m)){score+=5;reasons.push("sintaxe moderna");}
+    if(/aria-|textContent\s*=|createElement\(/.test(m)){score+=4;reasons.push("integração DOM");}
+    if(/getContext\(|canvas|fillRect|drawImage/.test(m)){score+=4;reasons.push("Canvas");}
+    if(/\/\*|\/\/|#\s|'''|"""/.test(s)){score+=3;reasons.push("documentação");}
+    if(/eval\(|new\s+Function\(|document\.write\(/.test(m)){score-=12;reasons.push("padrão inseguro/legado");}
+    if(/\bvar\b|console\.log\s*\(/.test(m)){score-=3;reasons.push("debug/legado");}
+    if(language==="python"&&/import\s+(requests|numpy|pandas|pygame)/.test(m)){score+=3;reasons.push("biblioteca Python");}
+    return {score,reasons:[...new Set(reasons)]};
+  }
+
+  function sourceWeight(kind,url=""){
+    const k=String(kind||"").toUpperCase(),u=String(url||"").toLowerCase();
+    if(/developer\.mozilla\.org|docs\.python\.org/.test(u))return 10;
+    if(k==="GITHUB")return 7;
+    if(k==="STACKOVERFLOW")return 5;
+    if(k==="DOCS")return 8;
+    return 0;
+  }
+
+  function candidateScore(candidate,query,plan){
+    const code=String(candidate.code||"");
+    const language=candidate.language||guessCodeLanguage(code,candidate.url);
+    const base=codeQualityScore(code,language);
+    const hay=norm([query,candidate.title,candidate.note,candidate.url].join(" "));
+    const tokens=[...new Set(norm(plan.topic).split(/\s+/).filter(x=>x.length>=3))].slice(0,18);
+    const matched=tokens.filter(x=>hay.includes(x)).length;
+    const codeMatched=tokens.filter(x=>norm(code).includes(x)).length;
+    let score=base.score+sourceWeight(candidate.sourceKind||candidate.kind,candidate.url);
+    score+=Math.min(18,matched*3);
+    score+=Math.min(12,codeMatched*2);
+    if(plan.language&&language===plan.language)score+=8;
+    if(code.length>=300)score+=4;
+    if(code.length>=800)score+=3;
+    if(/README|example|example|tutorial|demo|starter|guide/i.test(String(candidate.title||"")))score+=3;
+    if(/TODO|FIXME|throw new Error|raise\s+\w+/.test(code))score+=2;
+    if(/eval\(|new\s+Function\(|document\.write\(/.test(mask(code)))score-=10;
+    if(/\b(var|print)\b/.test(mask(code))&&language==="javascript")score-=2;
+    return {
+      score:Math.max(0,Math.min(100,Math.round(score))),
+      language,
+      reasons:[...new Set([
+        ...base.reasons,
+        matched?"relevância do termo":"",
+        codeMatched?"conteúdo alinhado ao objetivo":"",
+        plan.language&&language===plan.language?"linguagem compatível":"",
+        sourceWeight(candidate.sourceKind||candidate.kind,candidate.url)>=8?"fonte documental forte":"",
+        code.length>=300?"código suficientemente completo":"",
+        /eval\(|new\s+Function\(|document\.write\(/.test(mask(code))?"padrão inseguro/legado":""
+      ].filter(Boolean))]
+    };
+  }
+
+  function autonomousReport(best,alternatives,refs){
+    const source=best.url?best.url.replace(/^https?:\/\//,"").split("/")[0]:"fonte desconhecida";
+    const reasons=best.reasons?.length?best.reasons.join(", "):"estrutura e completude";
+    reviewSummary.textContent="Agente autônomo: "+best.title+" · score "+best.score+" · fonte "+source+".";
+    reviewList.innerHTML=[
+      "Critérios atendidos: "+reasons+".",
+      "Referências consultadas: "+refs+" · alternativas com código: "+alternatives+".",
+      "A seleção é heurística local; revise dependências, licença e contexto antes de publicar."
+    ].map(esc).map(x=>"<li>"+x+"</li>").join("");
+  }
+
+  async function autonomousSearch(query,reason="objetivo do usuário"){
+    const q=String(query||"").trim();
+    if(!q||autonomousBusy||state.autonomous.enabled===false)return false;
+    const key=norm(q)+"|"+norm(reason);
+    if(state.autonomousLastKey===key&&Date.now()-state.autonomous.lastAt<15000)return false;
+    autonomousBusy=true;
+    state.autonomousLastKey=key;
+    state.autonomous.lastAt=Date.now();
+    state.autonomous.lastQuery=q;
+    state.autonomous.lastReason=reason;
+    state.autonomous.candidateCount=0;
+    state.autonomous.selected="";
+    state.autonomous.score=0;
+    state.autonomous.alternatives=[];
+    status.textContent="AGENTE AUTÔNOMO: analisando objetivo…";
+    log("ANABEL: INICIANDO MODO AUTÔNOMO.");
+    const plan=buildSearchPlan(q);
+    state.autonomous.plan=plan;
+    log("ANABEL: objetivo normalizado → "+plan.topic);
+    log("ANABEL: estratégia → "+plan.terms.join(" | "));
+    log("ANABEL: fontes → GitHub + Stack Overflow + Documentação.");
+    try{
+      const jobs=[];
+      for(const term of plan.terms){
+        for(const source of plan.sources)jobs.push(Promise.resolve().then(()=>searchSource(term,source)));
+      }
+      const searchResults=await Promise.allSettled(jobs);
+      const refs=[],seen=new Set();
+      searchResults.forEach(r=>{
+        if(r.status!=="fulfilled")return;
+        (r.value||[]).forEach(ref=>{
+          if(ref?.url&&!seen.has(ref.url)){
+            seen.add(ref.url);
+            refs.push(ref);
+            addSource(ref);
+          }
+        });
+      });
+      log("ANABEL: varredura concluída → "+refs.length+" referências distintas.");
+      if(!refs.length){
+        status.textContent="Agente: nenhuma referência encontrada.";
+        log("ANABEL: nenhuma fonte respondeu com resultados utilizáveis.");
+        return false;
+      }
+
+      const targets=refs.slice(0,15);
+      log("ANABEL: lendo "+targets.length+" referências selecionadas.");
+      const pages=await Promise.allSettled(targets.map(async ref=>{
+        const out=[];
+        if(ref.kind==="GITHUB"){
+          try{out.push(...await readGithubRepoCode(ref.url));}catch(e){}
+        }
+        if(ref.kind!=="GITHUB"){
+          try{
+            const page=await readWebPage(ref.url,{timeout:14000});
+            extractCodeBlocks(page.text,ref.url).forEach((b,i)=>{
+              const sourceKind=ref.kind==="DOCS"?"DOCS":ref.kind;
+              out.push({
+                title:ref.title+(i?" · bloco "+(i+1):""),
+                url:ref.url,
+                code:b.code,
+                language:guessCodeLanguage(b.code,ref.url,b.language),
+                sourceKind,
+                note:ref.note||""
+              });
+            });
+          }catch(e){}
+        }
+        return out;
+      }));
+      const candidates=[];
+      pages.forEach(r=>{if(r.status==="fulfilled")candidates.push(...r.value);});
+      const unique=[];
+      const codeSeen=new Set();
+      for(const candidate of candidates){
+        const normalized=String(candidate.code||"").trim();
+        if(normalized.length<20||codeSeen.has(normalized))continue;
+        codeSeen.add(normalized);
+        const scored=candidateScore({...candidate,code:normalized},q,plan);
+        unique.push({...candidate,code:normalized,language:scored.language,score:scored.score,reasons:scored.reasons});
+      }
+      unique.sort((a,b)=>b.score-a.score||b.code.length-a.code.length);
+      state.autonomous.candidateCount=unique.length;
+      state.autonomous.alternatives=unique.slice(1,4).map(x=>({title:x.title,url:x.url,score:x.score,language:x.language}));
+      if(!unique.length){
+        log("ANABEL: li várias referências, mas não extraí nenhum código utilizável.");
+        status.textContent="Agente: nenhum código extraível.";
+        return false;
+      }
+
+      const best=unique[0];
+      state.autonomous.selected=best.title;
+      state.autonomous.score=best.score;
+      deliverCode(best.code,best.language,best.title,best.url);
+      autonomousReport(best,state.autonomous.alternatives.length,refs.length);
+      log("ANABEL: comparei "+unique.length+" candidatos de código.");
+      log("ANABEL: seleção → "+best.title);
+      log("ANABEL: critérios → "+best.reasons.join(", "));
+      log("ANABEL: código carregado no editor sem nova confirmação.");
+      status.textContent="Agente autônomo concluiu: código selecionado e entregue.";
+      return true;
+    }catch(e){
+      console.error("autonomousSearch:",e);
+      log("ANABEL: o loop autônomo encontrou uma falha, mas preservou o editor.");
+      status.textContent="Agente: falha controlada na pesquisa.";
+      return false;
+    }finally{
+      autonomousBusy=false;
+    }
+  }
+
+  async function autonomousFileTrigger(file){
+    const code=String(file?.code||editor.value||"");
+    if(!code.trim()||state.autonomous.enabled===false)return;
+    const lang=detectLanguage(code);
+    const analysis=analyze();
+    let reason="";
+    if(String(file?.ext||"").toLowerCase()==="json"){
+      try{JSON.parse(code);}catch(e){reason="JSON inválido: "+String(e.message||e);}
+    }
+    if(!reason&&(lang==="javascript"||lang==="typescript")){
+      try{new Function(code);}catch(e){reason=String(e.message||e);}
+    }
+    if(!reason&&analysis?.varCount)reason="uso de var detectado";
+    if(!reason&&analysis?.logCount)reason="console.log detectado";
+    if(!reason&&analysis?.pythonIssues?.length)reason=analysis.pythonIssues[0];
+    if(!reason&&analysis?.pythonSuggestions?.length)reason=analysis.pythonSuggestions[0];
+    if(!reason)return;
+    log("ANABEL: GATILHO AUTÔNOMO detectou → "+reason);
+    await autonomousSearch(inferSearchTopic(code,reason),"arquivo "+String(file?.name||"anexado"));
+  }
+
+  async function researchCode(query){
+    return await autonomousSearch(query,"pedido de código pesquisado");
+  }
+
+  function simple(text){
+    return String(text||"").replace(/\bPromise\b/gi,"resultado que pode chegar depois").replace(/\bcallback\b/gi,"função chamada depois").replace(/\bassíncrono\b/gi,"que continua enquanto outra tarefa termina").replace(/\bassíncrona\b/gi,"que continua enquanto outra tarefa termina");
+  }
+
+  function mask(code){
+    let out="",mode="code",quote="";
+    for(let i=0;i<code.length;i++){
+      const c=code[i],n=code[i+1];
+      if(mode==="code"){
+        if(c==="/"&&n==="/"){out+="  ";mode="line";i++;continue;}
+        if(c==="/"&&n==="*"){out+="  ";mode="block";i++;continue;}
+        if(c==="\""||c==="'"||c===String.fromCharCode(96)){out+=" ";quote=c;mode="string";continue;}
+        out+=c;continue;
+      }
+      if(mode==="line"){out+=c==="\n"?"\n":" ";if(c==="\n")mode="code";continue;}
+      if(mode==="block"){out+=c==="\n"?"\n":" ";if(c==="*"&&n==="/"){out+=" ";i++;mode="code";}continue;}
+      out+=c==="\n"?"\n":" ";
+      if(c==="\\"){out+=" ";i++;continue;}
+      if(c===quote)mode="code";
+    }
+    return out;
+  }
+
+  function refactorVar(code){
+    const m=mask(code);let out="",count=0;
+    for(let i=0;i<code.length;){
+      const prev=i?m[i-1]:" ",next=m[i+3]||" ";
+      if(m.slice(i,i+3)==="var"&&/[^A-Za-z0-9_$]/.test(prev)&&/\s/.test(next)){out+="let";i+=3;count++;}
+      else{out+=code[i];i++;}
+    }
+    return {code:out,count};
+  }
+
+  function removeLogs(code){
+    let count=0;
+    const out=code.split("\n").filter(line=>{
+      if(/^\s*console\.log\s*\([^;]*\)\s*;?\s*$/.test(line)){count++;return false;}
+      return true;
+    });
+    return {code:out.join("\n"),count};
+  }
+
+  function arrows(code){
+    let count=0;
+    const re=/(?:const\s+([A-Za-z_$][\w$]*)\s*=\s*)?function\s*\(([^)]*)\)\s*\{\s*return\s+([^;{}]+);?\s*\}\s*;?/g;
+    const out=code.replace(re,(match,name,args,expr)=>{
+      count++;
+      const body="("+args.trim()+") => "+expr.trim();
+      return name?"const "+name+" = "+body+";":body+";";
+    });
+    return {code:out,count};
+  }
+
+  function buildImprovements(m,result,sourceCode=""){
+    const raw=String(sourceCode||"");
+    const out=[];
+    if(result.varCount)out.push("Substitua var por let/const conforme a necessidade de reatribuição e escopo.");
+    if(result.logCount)out.push("Remova console.log de diagnóstico que não seja necessário no código final.");
+    if(result.functionCount>result.arrowCount)out.push("Modernize funções simples com retorno direto para Arrow Functions quando isso preservar o comportamento.");
+    if(result.fetchCount)out.push("Valide response.ok, trate erros de rede e considere CORS antes de consumir a resposta.");
+    if(/\bawait\b/.test(m))out.push("Proteja operações assíncronas com try/catch e trate estados de carregamento/falha.");
+    if(/getContext\s*\(\s*["']2d["']\)/.test(raw))out.push("Para jogos e animações Canvas, centralize requestAnimationFrame e considere devicePixelRatio.");
+    if(/innerHTML\s*=/.test(m))out.push("Evite inserir HTML dinâmico sem necessidade; prefira textContent para texto simples.");
+    if(/addEventListener\s*\(/.test(m))out.push("Centralize listeners repetidos e remova listeners que não tenham mais utilidade.");
+    if(/touch|pointer|click/.test(m))out.push("Teste entrada por toque e mouse em diferentes tamanhos de tela.");
+    out.push("Mantenha funções pequenas, valide entradas e deixe uma responsabilidade clara em cada etapa.");
+    return [...new Set(out)];
+  }
+
+  function renderReview({result,sourceCode,correctedCode=sourceCode,mode="análise"}){
+    const improvements=buildImprovements(mask(sourceCode),result,sourceCode);
+    const issues=[];
+    if(result.varCount)issues.push(result.varCount+" ocorrência(s) de var");
+    if(result.logCount)issues.push(result.logCount+" console.log");
+    if(result.functionCount>result.arrowCount)issues.push("funções simples passíveis de modernização");
+    if(result.fetchCount)issues.push("uso de fetch");
+    if(/\bawait\b/.test(mask(sourceCode)))issues.push("código assíncrono");
+    state.review={issues,improvements,correctedCode};
+    if(reviewSummary)reviewSummary.textContent=issues.length?
+      "Revisão "+mode+": "+issues.join(" · ")+".":
+      "Revisão "+mode+": nenhum problema básico detectado.";
+    if(reviewList)reviewList.innerHTML=improvements.map(x=>"<li>"+esc(x)+"</li>").join("");
+    if(correctedOutput)correctedOutput.value=correctedCode||sourceCode;
+  }
+
+  function analyzePython(code){
+    const src=String(code||""),issues=[],suggestions=[];
+    const lines=src.split("\n");
+    let balance=0;
+    for(const ch of src){if("([{".includes(ch))balance++;else if(")]}".includes(ch))balance--;}
+    if(balance!==0)issues.push("delimitadores possivelmente desbalanceados");
+    lines.forEach((line,i)=>{
+      if(/^\s*(def|class|if|elif|else|for|while|try|except|finally|with|match|case)\b/.test(line)&&/:\s*(#.*)?$/.test(line)===false&&!/\b(else|try|finally)\b/.test(line))suggestions.push("linha "+(i+1)+": verifique os dois-pontos no fim do bloco");
+      if(/^\s*(if|elif)\b.*(?<![=!<>])=(?!=)/.test(line))issues.push("linha "+(i+1)+": atribuição simples dentro de condição; talvez você queira == ou outra expressão");
+      if(/^\s*print\s*\(.*\)\s*$/.test(line)&&/["']/.test(line)===false)suggestions.push("linha "+(i+1)+": confirme se o valor impresso é o esperado");
+    });
+    if(/\bexcept\s*:\s*$/.test(src))suggestions.push("Prefira exceções específicas quando isso não reduzir a clareza.");
+    if(/\binput\s*\(/.test(src))suggestions.push("input() pode exigir uma interface própria no navegador; use widgets ou parâmetros para experiências web.");
+    if(/\bglobal\b/.test(src))suggestions.push("Evite global quando uma função, classe ou retorno explícito resolver o mesmo problema.");
+    return {issues:[...new Set(issues)],suggestions:[...new Set(suggestions)]};
+  }
+
+  // BASE DE CONHECIMENTO DE ERROS — Sintoma → Cura
+  const BUG_DATABASE=[
+    {
+      id:"VAR_OBSOLETE",
+      label:"Uso de 'var' (Obsoleto)",
+      pattern:/\bvar\b/,
+      symptom:code=>/\bvar\b/.test(mask(code)),
+      fix:code=>refactorVar(code).code,
+      tip:"Substituído 'var' por 'let' para reduzir problemas de escopo. Use 'const' quando não houver reatribuição."
+    },
+    {
+      id:"CONSOLE_LOG_DEBUG",
+      label:"Logs de Debug (Poluição)",
+      pattern:/console\.log\s*\(/,
+      symptom:code=>/console\.log\s*\(/.test(mask(code)),
+      fix:code=>removeLogs(code).code,
+      tip:"Removidos console.log usados como diagnóstico; preserve logs somente quando fizerem parte da funcionalidade."
+    },
+    {
+      id:"ASYNC_WITHOUT_TRY",
+      label:"Async sem Try/Catch",
+      pattern:/\bawait\b/,
+      symptom:code=>/\bawait\b/.test(mask(code))&&!/\btry\s*\{/.test(mask(code)),
+      fix:code=>{
+        const src=String(code||"");
+        if(!/\basync\b/.test(mask(src)))return src;
+        const re=/^(\s*)(await\s+[^;\n]+;?)\s*$/gm;
+        let count=0;
+        const fixed=src.replace(re,(all,indent,statement)=>{
+          count++;
+          const clean=statement.trimEnd();
+          return indent+"try {\n"+indent+"  "+clean+"\n"+indent+"} catch (err) {\n"+indent+'  console.error("Erro capturado pela Anabel:", err);\n'+indent+"}";
+        });
+        return count?fixed:src;
+      },
+      tip:"Operações await simples foram protegidas com try/catch. Expressões await complexas exigem revisão contextual."
+    },
+    {
+      id:"FUNCTION_MODERNIZATION",
+      label:"Função Tradicional (Sugerida Arrow)",
+      pattern:/function\s*\(([^)]*)\)\s*\{\s*return\s+/,
+      symptom:code=>/function\s*\(.*\)\s*\{\s*return\s+.*\}/s.test(mask(code)),
+      fix:code=>arrows(code).code,
+      tip:"Função simples com retorno direto modernizada para Arrow Function."
+    },
+    {
+      id:"CANVAS_OPTIMIZATION",
+      label:"Canvas sem devicePixelRatio",
+      pattern:/getContext\s*\(\s*['"]2d['"]\s*\)/,
+      symptom:code=>/getContext\s*\(\s*['"]2d['"]\s*\)/.test(mask(code))&&!/\bdevicePixelRatio\b/.test(mask(code)),
+      fix:code=>{
+        const src=String(code||"");
+        if(/\bdevicePixelRatio\b/.test(mask(src)))return src;
+        const re=/^(\s*)(const|let|var)\s+ctx\s*=\s*canvas\.getContext\s*\(\s*(['"])2d\3\s*\)\s*;?\s*$/m;
+        if(!re.test(src))return src;
+        return src.replace(re,(all,indent,decl)=>{
+          return indent+"const dpr = window.devicePixelRatio || 1;\n"+
+            indent+"const rect = canvas.getBoundingClientRect();\n"+
+            indent+"if (rect.width > 0 && rect.height > 0) {\n"+
+            indent+"  canvas.width = Math.max(1, Math.round(rect.width * dpr));\n"+
+            indent+"  canvas.height = Math.max(1, Math.round(rect.height * dpr));\n"+
+            indent+"}\n"+
+            indent+decl+" ctx = canvas.getContext(\"2d\");\n"+
+            indent+"ctx.setTransform(dpr, 0, 0, dpr, 0, 0);";
+        });
+      },
+      tip:"Canvas ajustado para devicePixelRatio, melhorando a nitidez em telas de alta densidade."
+    }
+  ];
+
+  function analyze(){
+    const code=editor.value;
+    if(!code.trim()){log("ANABEL: editor vazio.");return null;}
+    if((state.language==="python"||detectLanguage(code)==="python")){
+      const py=analyzePython(code);
+      log("PROFESSOR PYTHON: análise concluída.");
+      log("PYTHON: "+(py.issues.length?py.issues.join(" · "):"nenhum problema sintático básico evidente."));
+      py.suggestions.forEach(x=>log("PYTHON DICA: "+x));
+      const base={varCount:0,logCount:0,functionCount:0,arrowCount:0,fetchCount:0,python:true,pythonIssues:py.issues,pythonSuggestions:py.suggestions};
+      state.review={issues:py.issues,improvements:[...py.suggestions,"Use Ctrl+Espaço para completar palavras, built-ins, módulos e símbolos do próprio arquivo."],correctedCode:code};
+      renderReview({result:base,sourceCode:code,correctedCode:code,mode:"análise Python"});
+      state.pendingAction=null;
+      return base;
+    }
+    const m=mask(code);
+    const result={
+      varCount:(m.match(/\bvar\b/g)||[]).length,
+      logCount:(m.match(/\bconsole\.log\s*\(/g)||[]).length,
+      functionCount:(m.match(/\bfunction\b/g)||[]).length,
+      arrowCount:(m.match(/=>/g)||[]).length,
+      fetchCount:(m.match(/\bfetch\s*\(/g)||[]).length
+    };
+    log("ANABEL: análise concluída.");
+    log("ANÁLISE: var="+result.varCount+" · console.log="+result.logCount+" · function="+result.functionCount+" · arrow="+result.arrowCount+" · fetch="+result.fetchCount);
+    if(result.fetchCount)log("DICA: confira response.ok, tratamento de erros e CORS.");
+    if(/\bawait\b/.test(m))log("DICA: código assíncrono encontrado; considere try/catch.");
+    if(result.varCount)log("PERGUNTA DE ESCOPO: esta variável precisa existir fora do bloco onde foi criada?");
+    if(result.fetchCount)log("PERGUNTA DE ASSINCRONISMO: o que deve acontecer quando a rede falhar ou responder devagar?");
+    if(/\bArray\b|\bObject\b|\bMap\b|\bSet\b/.test(m))log("PERGUNTA DE ESTRUTURA: você precisa preservar ordem, buscar por chave ou impedir duplicidades?");
+    renderReview({result,sourceCode:code,correctedCode:code,mode:"análise"});
+    state.pendingAction=(result.varCount||result.logCount||result.functionCount>result.arrowCount)?{type:"refactor"}:null;
+    if(state.pendingAction)log("ANABEL: existem correções automáticas disponíveis. Use /corrigir ou responda sim para aplicar a refatoração segura.");
+    if(!result.varCount&&!result.logCount&&!result.fetchCount)log("DICA: nenhum dos padrões básicos conhecidos foi encontrado.");
+    log("ANABEL: ideias de melhoria foram colocadas no painel lateral.");
+    return result;
+  }
+
+  function refactor(){
+    if(!editor.value.trim()){log("ANABEL: editor vazio.");return null;}
+    snapshot("antes da refatoração");
+    let code=editor.value;
+    const a=refactorVar(code);code=a.code;
+    const b=removeLogs(code);code=b.code;
+    const c=arrows(code);code=c.code;
+    editor.value=code;
+    log("ANABEL: refatoração aplicada → var→let: "+a.count+" · console.log removidos: "+b.count+" · arrow: "+c.count);
+    if(a.count){addSource({kind:"REF",title:"MDN — let",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/let",note:"Justificativa para let."});log("DICA: use const quando o valor não for reatribuído.");}
+    if(b.count)addSource({kind:"REF",title:"MDN — console.log()",url:"https://developer.mozilla.org/docs/Web/API/console/log_static",note:"Referência da Console API."});
+    if(c.count)addSource({kind:"REF",title:"MDN — Arrow functions",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Functions/Arrow_functions",note:"A Anabel transforma apenas funções simples com retorno direto."});
+    const after=analyze();
+    renderReview({result:after,sourceCode:code,correctedCode:code,mode:"correção"});
+    correctedOutput.value=code;
+    log("ANABEL: código corrigido foi colocado no Editor e no painel “Código corrigido”.");
+    log("ANABEL: veja também as ideias de melhoria no painel “Ideias de melhoria”.");
+    switchTab(1);
+    return {varCount:a.count,logCount:b.count,arrowCount:c.count,code};
+  }
+
+  function runDiagnostic(code){
+    const source=String(code||"");
+    return BUG_DATABASE.filter(bug=>{
+      try{return bug.pattern.test(source)&&bug.symptom(source);}
+      catch(e){return false;}
+    });
+  }
+
+  async function autoFixSystem(){
+    const originalCode=String(editor.value||"");
+    if(!originalCode.trim()){
+      log("ANABEL: editor vazio. Nada para corrigir.");
+      status.textContent="Auto-correção: editor vazio.";
+      return {changed:false,issues:[],passes:0,code:originalCode};
+    }
+
+    snapshot("antes do auto-conserto");
+    log("ANABEL: INICIANDO MOTOR DE DIAGNÓSTICO E AUTO-CORREÇÃO.");
+    let fixedCode=originalCode;
+    const applied=[];
+    const seenStates=new Set();
+    const MAX_PASSES=8;
+
+    for(let pass=1;pass<=MAX_PASSES;pass++){
+      const stateKey=fixedCode;
+      if(seenStates.has(stateKey))break;
+      seenStates.add(stateKey);
+      const issues=runDiagnostic(fixedCode);
+      if(!issues.length)break;
+
+      log("ANABEL: passagem "+pass+" → "+issues.length+" sintoma(s) conhecido(s).");
+      let changed=false;
+
+      for(let index=0;index<issues.length;index++){
+        const bug=issues[index];
+        log("["+(applied.length+1)+"] Consertando "+bug.label+"…");
+        const before=fixedCode;
+        try{
+          fixedCode=String(bug.fix(fixedCode)||fixedCode);
+        }catch(e){
+          fixedCode=before;
+          log("ANABEL: correção "+bug.id+" falhou com segurança → "+String(e.message||e));
+        }
+        if(fixedCode!==before){
+          changed=true;
+          applied.push({id:bug.id,label:bug.label,tip:bug.tip});
+          log("ANABEL: ✓ "+bug.id+" aplicado.");
+        }else{
+          log("ANABEL: ↳ "+bug.id+" não alterou o código; mantido para revisão contextual.");
+        }
+      }
+
+      if(!changed)break;
+    }
+
+    const remaining=runDiagnostic(fixedCode);
+    editor.value=fixedCode;
+    correctedOutput.value=fixedCode;
+    state.review={
+      issues:remaining.map(x=>x.label),
+      improvements:[...new Map(applied.map(x=>[x.id,x.tip])).values()],
+      correctedCode:fixedCode
+    };
+
+    if(reviewSummary){
+      reviewSummary.textContent=applied.length
+        ? "SISTEMA: "+applied.length+" correção(ões) automática(s) aplicada(s) com sucesso."
+        : "SISTEMA: nenhum conserto automático seguro foi aplicado.";
+    }
+    if(reviewList){
+      const items=applied.map(x=>x.tip);
+      if(remaining.length)items.push("Revisão manual necessária: "+remaining.map(x=>x.label).join(" · ")+".");
+      reviewList.innerHTML=[...new Set(items)].map(x=>"<li>"+esc(x)+"</li>").join("");
+    }
+
+    setLanguage(state.language==="auto"?"auto":state.language);
+    switchTab(1);
+
+    if(applied.length){
+      log("ANABEL: ciclo concluído → "+applied.length+" correção(ões) aplicada(s).");
+      applied.forEach((x,i)=>log("AUTO-FIX "+(i+1)+" → "+x.label));
+    }else{
+      log("ANABEL: nenhum defeito conhecido pôde ser corrigido automaticamente com segurança.");
+    }
+    if(remaining.length)log("ANABEL: ainda há "+remaining.length+" sintoma(s) para revisão contextual.");
+    status.textContent=remaining.length
+      ? "Auto-correção concluída · revisão manual necessária."
+      : "Auto-correção concluída · diagnóstico limpo.";
+
+    return {changed:fixedCode!==originalCode,issues:remaining,passes:seenStates.size,applied,code:fixedCode};
+  }
+
+  function fixCode(){
+    if(!editor.value.trim()){log("ANABEL: editor vazio.");return null;}
+    snapshot("antes da correção automática");
+    const before=editor.value;
+    let code=refactorVar(before).code;
+    code=removeLogs(code).code;
+    code=arrows(code).code;
+    editor.value=code;
+    const result=analyze();
+    state.pendingAction=null;
+    renderReview({result,sourceCode:code,correctedCode:code,mode:"correção automática"});
+    correctedOutput.value=code;
+    log("ANABEL: correção concluída. O código corrigido está no Editor e no painel de saída.");
+    log("ANABEL: abaixo do painel técnico estão as sugestões de melhoria para a próxima etapa.");
+    switchTab(1);
+    return code;
+  }
+
+  function improvementIdeas(){
+    const code=editor.value;
+    if(!code.trim()){
+      const generic=[
+        "Adicionar tratamento consistente de erros e estados de carregamento.",
+        "Separar interface, lógica de negócio e utilitários quando o arquivo crescer.",
+        "Adicionar validação de entradas e mensagens claras para o usuário.",
+        "Testar teclado, toque, telas pequenas e orientação do dispositivo.",
+        "Reduzir trabalho por frame e usar requestAnimationFrame em animações.",
+        "Adicionar testes automatizados para os fluxos críticos."
+      ];
+      reviewSummary.textContent="Melhorias gerais recomendadas para um projeto web.";
+      reviewList.innerHTML=generic.map(x=>"<li>"+esc(x)+"</li>").join("");
+      correctedOutput.value="";
+      log("ANABEL: gerei ideias gerais de melhoria porque o editor está vazio.");
+      return generic;
+    }
+    const result=analyze();
+    const improvements=state.review.improvements;
+    log("ANABEL: "+improvements.length+" ideias de melhoria foram geradas para este código.");
+    switchTab(0);
+    return improvements;
+  }
+
+  function strategyGame(){
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reino dos 16 Turnos</title><style>*{box-sizing:border-box}body{margin:0;background:#000;color:#00ff33;font-family:monospace;padding:12px}main{max-width:760px;margin:auto}h1{text-align:center}.hud{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.stat,button,#msg{border:1px solid #00ff33;background:#080808;color:#00ff33;padding:8px;font:700 12px monospace}canvas{width:100%;display:block;margin-top:7px;border:2px solid #00ff33;image-rendering:pixelated}.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:7px}#msg{margin-top:7px;min-height:40px}@media(max-width:520px){.hud{grid-template-columns:repeat(2,1fr)}.actions{grid-template-columns:repeat(2,1fr)}}</style></head><body><main><h1>REINO DOS 16 TURNOS</h1><div class="hud"><div class="stat">TURNO <b id="t">1</b>/16</div><div class="stat">COMIDA <b id="f">30</b></div><div class="stat">OURO <b id="g">20</b></div><div class="stat">DEFESA <b id="d">10</b></div></div><canvas id="m" width="480" height="300"></canvas><div class="actions"><button data-a="f">PRODUZIR</button><button data-a="g">MINA</button><button data-a="d">DEFENDER</button><button data-a="e">EXPANDIR</button></div><div id="msg">Escolha uma ação por turno.</div></main><script>(()=>{const c=document.getElementById("m"),x=c.getContext("2d"),t=document.getElementById("t"),f=document.getElementById("f"),g=document.getElementById("g"),d=document.getElementById("d"),msg=document.getElementById("msg");let s={t:1,f:30,g:20,d:10,l:1,end:false};function draw(){x.clearRect(0,0,480,300);x.fillStyle="#071007";x.fillRect(0,0,480,300);for(let y=0;y<5;y++)for(let i=0;i<8;i++){x.strokeStyle="#16451d";x.strokeRect(i*60,y*60,60,60);if((i+y)%4===0){x.fillStyle="#00ff33";x.fillRect(i*60+24,y*60+24,12,12)}}x.fillStyle="#00ff33";x.fillRect(190,120,100,58);x.fillStyle="#000";x.font="14px monospace";x.fillText("VILA",222,153);t.textContent=Math.min(s.t,16);f.textContent=s.f;g.textContent=s.g;d.textContent=s.d}function next(m){if(s.end)return;s.f-=2;if(s.f<=0){s.end=true;msg.textContent="DERROTA: faltou comida.";draw();return}s.t++;msg.textContent=m;if(s.t>16){s.end=true;msg.textContent=(s.l>=6&&s.d>=20&&s.g>=20)?"VITÓRIA: reino consolidado.":"FIM: reino não consolidado."}draw()}function act(a){if(s.end)return;if(a==="f"){s.f+=8;next("A produção agrícola aumentou a comida.")}else if(a==="g"){s.g+=7;next("A mina trouxe ouro.")}else if(a==="d"){s.d+=5;s.g=Math.max(0,s.g-3);next("A defesa foi reforçada.")}else{s.l++;s.g=Math.max(0,s.g-5);next("Território expandido.")}}document.querySelectorAll("button").forEach(b=>b.onclick=()=>act(b.dataset.a));addEventListener("message",e=>{if(e.source!==parent)return;const q=e.data?.command;if(q==="left")act("d");if(q==="right")act("e")});draw()})()<\/script></body></html>';
+  }
+
+  function spaceGame(){
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Space Invaders</title><style>body{margin:0;background:#000;color:#00ff33;font-family:monospace;display:grid;place-items:center;min-height:100vh}canvas{width:min(92vw,600px);border:2px solid #00ff33;image-rendering:pixelated}</style></head><body><canvas id="g" width="360" height="260"></canvas><script>(()=>{const c=document.getElementById("g"),x=c.getContext("2d");let p=166,shot=null,score=0,en=[];for(let y=0;y<2;y++)for(let i=0;i<7;i++)en.push({x:34+i*46,y:34+y*24});function mv(d){p=Math.max(5,Math.min(330,p+d*14))}addEventListener("keydown",e=>{if(e.key==="ArrowLeft")mv(-1);if(e.key==="ArrowRight")mv(1);if(e.code==="Space"&&!shot)shot={x:p+12,y:230}});addEventListener("message",e=>{if(e.source!==parent)return;const q=e.data?.command;if(q==="left")mv(-1);if(q==="right")mv(1);if(q==="fire"&&!shot)shot={x:p+12,y:230}});function loop(){x.clearRect(0,0,360,260);x.fillStyle="#00ff33";x.font="12px monospace";x.fillText("SCORE "+String(score).padStart(4,"0"),8,15);en.forEach(a=>x.fillRect(a.x,a.y,24,12));x.fillRect(p,236,28,8);x.fillRect(p+12,228,4,8);if(shot){shot.y-=7;x.fillRect(shot.x,shot.y,3,8);for(let i=en.length-1;i>=0;i--){const a=en[i];if(shot.x>=a.x-2&&shot.x<=a.x+26&&shot.y<=a.y+12&&shot.y+8>=a.y){en.splice(i,1);shot=null;score+=10;break}}if(shot&&shot.y<0)shot=null}requestAnimationFrame(loop)}requestAnimationFrame(loop)})()<\/script></body></html>';
+  }
+
+  function selectIdea(n){
+    const i=Math.max(1,Math.min(5,Number(n)||1))-1;
+    const x=state.ideas[i];
+    if(!x){log("ANABEL: não há ideias carregadas.");return;}
+    state.selectedIdea=x;
+    log("ANABEL: ideia selecionada → "+x.title);
+    log("ANABEL: agora diga “me dê o código”.");
+  }
+
+  function generate(){
+    const x=state.selectedIdea||IDEAS[0];
+    snapshot("antes de gerar "+x.title);
+    editor.value=/space|invaders/i.test(x.title)?spaceGame():strategyGame();
+    log("ANABEL: protótipo gerado → "+x.title);
+    switchTab(1);
+  }
+
+
+  async function translateSimple(text){
+    const original=String(text||"");
+    try{
+      const url="https://api.mymemory.translated.net/get?q="+encodeURIComponent(original.slice(0,480))+"&langpair=en|pt-BR";
+      const data=await httpJson(url,8000);
+      const translated=data?.responseData?.translatedText;
+      if(translated)return translated;
+    }catch(e){}
+    return original
+      .replace(/\bThis function is a reusable block of code\.?/gi,"Esta função é um bloco reutilizável de código.")
+      .replace(/\bThis\b/gi,"Esta")
+      .replace(/\bthat\b/gi,"que")
+      .replace(/\bfunction\b/gi,"função")
+      .replace(/\breusable\b/gi,"reutilizável")
+      .replace(/\bblock of code\b/gi,"bloco de código")
+      .replace(/\bcode\b/gi,"código")
+      .replace(/\bprogramming\b/gi,"programação")
+      .replace(/\bgame\b/gi,"jogo")
+      .replace(/\bstrategy\b/gi,"estratégia")
+      .replace(/\blibrary\b/gi,"biblioteca")
+      .replace(/\bdata\b/gi,"dados")
+      .replace(/\bweb\b/gi,"web");
+  }
+
+  async function ideas(query){
+    const q=String(query||"jogo estratégia 8-bit").trim();
+    await research(q+" game design");
+    state.ideas=[...IDEAS];
+    log("ANABEL: agora vou separar referências de pesquisa de propostas originais.");
+    state.ideas.forEach((x,i)=>{
+      log("IDEIA "+(i+1)+" — "+x.title);
+      log("  "+x.pitch);
+      log("  MECÂNICAS: "+x.mechanics.join(", "));
+    });
+    log("ANABEL: escolha uma ideia pelo número. Depois diga “me dê o código”.");
+  }
+
+  async function smartPythonAnswer(query){
+    const n=norm(query);
+    if(/\b(funcao|função)\b.*\bpython\b|\bdef\b/.test(n)){const k=KB.find(x=>x.title==="def");if(k){log("PROFESSOR PYTHON: "+k.title);log("EXPLICAÇÃO: "+k.text);log("EXEMPLO: "+k.example);log("DICA: "+k.tip);addSource({kind:"PYTHON",title:k.source,url:k.url,note:"Referência Python usada pelo Professor."});return true;}}
+    if(/\bpython\b|\bpyodide\b/.test(n)){const k=KB.find(x=>x.title==="Python");if(k){log("PROFESSOR PYTHON: "+k.text);log("EXEMPLO: "+k.example);log("DICA: "+k.tip);addSource({kind:"PYTHON",title:k.source,url:k.url,note:"Referência Python oficial."});return true;}}
+    return false;
+  }
+
+  const AI_ENDPOINT=localStorage.getItem("anabel-api-endpoint") || (location.hostname.endsWith(".vercel.app") ? "/api/gemini" : "https://dev-anabel.vercel.app/api/gemini");
+
+  async function callRemoteAssistant(query){
+    const history=state.history.slice(-12).map((line,i)=>({role:i%2===0?"user":"model",parts:[{text:String(line)}]}));
+    try{
+      status.textContent="IA: Gemini / Groq…";
+      const response=await fetch(AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:String(query).slice(0,12000),history})});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok||!data.text)throw new Error(data.error||"gateway indisponível");
+      log("ANABEL ["+String(data.provider||"IA").toUpperCase()+"]: "+data.text);
+      status.textContent="IA ativa: "+String(data.provider||"remota");
+      return true;
+    }catch(error){
+      log("ANABEL: Gemini/Groq indisponíveis; usando motor local.");
+      status.textContent="Motor local ativo.";
+      return false;
+    }
+  }
+
+  async function smartAnswer(query){
+    if(await smartPythonAnswer(query))return;
+    const item=known(query);
+    if(item){
+      log("ANABEL: "+item.title);
+      log("EXPLICAÇÃO: "+item.text);
+      log("EXEMPLO: "+item.example);
+      log("DICA: "+item.tip);
+      addSource({kind:"LOCAL",title:item.source,url:item.url,note:"Referência técnica da base local."});
+      return;
+    }
+    const found=await research(query);
+    if(!found.length){
+      log("ANABEL: não encontrei material suficiente para responder com segurança.");
+      return;
+    }
+    let detail=found[0].note||found[0].title;
+    if(/\b(the|this|function|game|library|data|how|what)\b/i.test(detail))detail=await translateSimple(detail);
+    log("RESPOSTA SIMPLIFICADA: "+detail);
+    log("DICA: a referência está na área FONTES; consulte o original para contexto completo.");
+  }
+  async function smartAnswer(query){
+    if(await smartPythonAnswer(query))return;
+    if(await callRemoteAssistant(query))return;
+    const item=known(query);
+    if(item){
+      log("ANABEL: "+item.title);
+      log("EXPLICAÇÃO: "+item.text);
+      log("EXEMPLO: "+item.example);
+      log("DICA: "+item.tip);
+      addSource({kind:"LOCAL",title:item.source,url:item.url,note:"Referência técnica da base local."});
+      return;
+    }
+    const found=await research(query);
+    if(!found.length){
+      log("ANABEL: não encontrei material suficiente para responder com segurança.");
+      return;
+    }
+    let detail=found[0].note||found[0].title;
+    if(/\b(the|this|function|game|library|data|how|what)\b/i.test(detail))detail=await translateSimple(detail);
+    log("RESPOSTA SIMPLIFICADA: "+detail);
+    log("DICA: a referência está na área FONTES; consulte o original para contexto completo.");
+  }
+  function intent(text){
+    const n=norm(text);
+    const url=text.match(/https?:\/\/[^\s<>"]+/i)?.[0]?.replace(/[),.;]+$/,"");
+    if(url)return {type:"url",value:url};
+    if(/^\/?(ajuda|help|comandos)(\s|$)/.test(n))return {type:"help"};
+    if(/^\/?(fontes?|source)(\s|$)/.test(n))return {type:"sources"};
+    if(/^\/?(desfazer|undo|voltar)(\s|$)/.test(n))return {type:"undo"};
+    if(/^(sim|s|yes|y|go|ok|okay|pode|manda|confirmo)$/.test(n)||/^(nao|não|n|no|cancelar|cancelo)$/.test(n))return {type:"confirm",value:n};
+    if(/^\/?(executar|rodar|run|play)(\s|$)/.test(n))return {type:"run"};
+    if(/^\/?dica(\s|$)/.test(n)||/\bdica\b.*\b(codigo|código|erro|programacao|programação)\b/.test(n))return {type:"tip"};
+    if(/\bspace\s*invaders?\b|\binvaders?\b/.test(n))return {type:"space"};
+    if(/^\/?(analisar|analise|audit|diagnostico)(\s|$)/.test(n)||/\b(analisar|analise|audit|diagnostico)\b.*\b(codigo|editor)\b/.test(n))return {type:"analyze"};
+    if(/^\/?(refatorar|modernizar|otimizar)(\s|$)/.test(n)||/console\.log|\bvar\b.*\blet\b|arrow function/.test(n))return {type:"refactor"};
+    if(/^\/?(corrigir|corrija|consertar|conserte|arrumar|arrume|fix|reparar|repare)(\s|$)/.test(n)||/\b(corrija|conserte|arrume|repare|corrigir|consertar|arrumar|reparar)\b.*\b(codigo|código|erro|bug|falha)\b/.test(n))return {type:"fix"};
+    if(/^\/?(melhorar|melhore|melhorias|sugestoes|sugestões)(\s|$)/.test(n)||/\b(ideias?|sugestoes?|sugestões)\b.*\b(melhoria|melhorias|melhorar|codigo|código)\b/.test(n))return {type:"improve"};
+    const select=n.match(/\b(?:ideia|opcao|opção)\s*([1-5])\b/)||n.match(/\b(?:gostei|escolho|quero)\b.*\b([1-5])\b/);
+    if(select)return {type:"select",value:Number(select[1])};
+    if(/^\/?ideias?(\s|$)/.test(n)||/\b(dica|sugestao|sugestão)\b.*\b(jogo|game)\b/.test(n))return {type:"ideas",value:n.replace(/^\/?ideias?\s*/,"")};
+    if(/\b(?:procure|encontre|busque|ache|pesquise|pesquisar)\b/.test(n)&&/\b(?:codigo|código|script|exemplo|implementacao|implementação)\b/.test(n))return {type:"autonomousSearch",value:text.replace(/\b(?:procure|encontre|busque|ache|pesquise|pesquisar)\b/gi,"").replace(/\b(?:me\s+)?(?:de|dê|traga|entregue|entregar)\b/gi,"").replace(/\b(?:codigo|código)\b/gi,"").trim()};
+    if(/\b(?:pesquise|pesquisa|pesquisar|busque|buscar|procure|na internet|na rede)\b/.test(n)&&/\b(?:codigo|código|script|exemplo|implemente|implementacao|implementação)\b/.test(n))return {type:"researchCode",value:text.replace(/\b(?:pesquise|pesquisa|pesquisar|busque|buscar|procure|na internet|na rede)\b/gi,"").replace(/\b(?:me\s+)?(?:de|dê|traga|entregue|entregar)\b/gi,"").replace(/\b(?:codigo|código)\b/gi,"").trim()};
+    if(/^\/?(pesquisar|pesquisa|buscar|busca)(\s|$)/.test(n)||/\b(busque|buscar|pesquise|pesquisar|procure|na rede|na internet)\b/.test(n))return {type:"research",value:text.replace(/\b(busque|buscar|pesquise|pesquisa|pesquisar|procure|na rede|na internet)\b/gi,"").trim()};
+    if(/\b(?:c[oó]digo|script|implementa[cç][aã]o|exemplo)\b/.test(n)&&/\b(?:como|criar|fazer|faca|faça|usar|implementar|exemplo|gera|gerar|preciso|quero|me d[eê]|me entregue)\b/.test(n))return {type:"researchCode",value:text};
+    if(/\b(o que e|o que é|como funciona|como faco|como faço|como criar|como usar|explique|explica|por que|por quê|qual a melhor maneira)\b/.test(n))return {type:"question",value:text};
+    if(/\b(crie|criar|gere|gerar|faça|faca|desenvolva|codifique|entregue|me de|me dê|me entregue)\b.*\b(jogo|game|codigo|código|prototipo|protótipo)\b/.test(n))return {type:"generate"};
+    return {type:"fallback",value:text};
+  }
+
+  function applyPending(text){
+    const n=norm(text);
+    if(!state.pendingAction){log("ANABEL: não há nenhuma ação aguardando aprovação.");return;}
+    if(/^(nao|não|n|no|cancelar|cancelo)$/.test(n)){state.pendingAction=null;log("ANABEL: ação cancelada.");return;}
+    if(/^(sim|s|yes|y|go|ok|okay|pode|manda|confirmo)$/.test(n)){
+      const action=state.pendingAction;state.pendingAction=null;
+      if(action.type==="refactor")refactor();
+      else if(action.type==="run")run(editor.value);
+      return;
+    }
+    log("ANABEL: responda sim, s, yes, go, ok ou não.");
+  }
+
+  function contextualTip(){
+    const m=mask(editor.value);
+    if(!m.trim()){log("DICA: escreva ou anexe um código para receber uma dica contextual.");return;}
+    if(/\bfetch\s*\(/.test(m)){log("DICA: trate response.ok, erros de rede e CORS.");addSource({kind:"DICA",title:"MDN — Fetch API",url:"https://developer.mozilla.org/docs/Web/API/Window/fetch",note:"Referência da Fetch API."});return;}
+    if(/getContext\s*\(\s*["']2d["']\)/.test(m)){log("DICA: para animações, prefira requestAnimationFrame.");addSource({kind:"DICA",title:"MDN — requestAnimationFrame",url:"https://developer.mozilla.org/docs/Web/API/Window/requestAnimationFrame",note:"Referência de animação."});return;}
+    if(/\b(Array|Object|Map|Set)\b/.test(m)){log("DICA: escolha a estrutura pelos padrões de acesso: ordem, chave ou unicidade.");addSource({kind:"DICA",title:"MDN — JavaScript data structures",url:"https://developer.mozilla.org/docs/Web/JavaScript/Data_structures",note:"Referência de estruturas de dados."});return;}
+    log("DICA: mantenha cada função com uma responsabilidade clara e valide entradas.");
+  }
+
+  async function handleCommand(text){
+    const i=intent(text);
+
+    if(i.type==="help"){
+      log("COMANDOS: /ajuda · /pesquisar assunto · /ideias assunto · /analisar · /corrigir · /melhorar · /refatorar · /executar · /desfazer · /fontes");
+      log("NATURAL: faça perguntas, mande uma URL, peça uma ideia, escolha uma ideia e peça o código.");
+      return;
+    }
+
+    if(i.type==="sources"){
+      if(!state.sourceList.length)log("ANABEL: nenhuma referência nesta sessão.");
+      else{log("ANABEL: "+state.sourceList.length+" referência(s) disponíveis.");sources.classList.add("show");}
+      return;
+    }
+
+    if(i.type==="undo"){undo();return;}
+    if(i.type==="confirm"){applyPending(i.value);return;}
+    if(i.type==="run"){run(editor.value);return;}
+    if(i.type==="tip"){contextualTip();return;}
+    if(i.type==="space"){editor.value=spaceGame();log("ANABEL: Space Invaders carregado no editor.");switchTab(1);return;}
+    if(i.type==="analyze"){analyze();return;}
+    if(i.type==="fix"){await autoFixSystem();return;}
+    if(i.type==="improve"){improvementIdeas();return;}
+    if(i.type==="refactor"){refactor();return;}
+    if(i.type==="url"){await loadUrl(i.value);return;}
+    if(i.type==="autonomousSearch"){await autonomousSearch(i.value,"comando autônomo do usuário");return;}
+    if(i.type==="researchCode"){await researchCode(i.value);return;}
+    if(i.type==="research"){await research(i.value);return;}
+    if(i.type==="question"){await smartAnswer(i.value);return;}
+    if(i.type==="ideas"){await ideas(i.value||"jogo estratégia 8-bit");return;}
+    if(i.type==="select"){selectIdea(i.value);return;}
+    if(i.type==="generate"){if(state.selectedIdea)generate();else await autonomousSearch(i.value||text,"pedido de código sem ideia selecionada");return;}
+
+    const item=known(i.value);
+    if(item){await smartAnswer(i.value);return;}
+
+    log("ANABEL: posso pesquisar, explicar, analisar o código, refatorar, gerar ideias ou executar o Sandbox.");
+    log("DICA: experimente “Anabel, pesquise Canvas”, “quero uma ideia de jogo” ou “analise meu código”.");
+  }
+
+  async function sendCommand(){
+    if(state.busy)return;
+    const text=input.value.trim();
+    if(!text)return;
+    state.busy=true;send.disabled=true;input.value="";log("DEV: "+text);
+    try{await handleCommand(text);}
+    catch(e){console.error("Dev_Anabel:",e);log("ERRO: "+(e.message||"falha inesperada"));}
+    finally{state.busy=false;send.disabled=false;input.focus();}
+  }
+
+  window.DevAnabel={
+    state,
+    switchTab,
+    theme,
+    run,
+    undo,
+    loadUrl,
+    handleFiles,
+    research,
+    researchCode,
+    autonomousSearch,
+    answer:smartAnswer,
+    analyze,
+    refactor,
+    ideas,
+    selectIdea,
+    generate,
+    intent,
+    runDiagnostic,
+    autoFixSystem
+  };
+
+  editor.addEventListener("input",()=>{if(state.language==="auto")setLanguage("auto");else setLanguage(state.language);updateLineNumbers();saveSessionDebounced();if(detectLanguage(editor.value)==="python")renderAutocomplete(false);else autocomplete.classList.remove("show");});
+  editor.addEventListener("scroll",()=>{lineNumbers.scrollTop=editor.scrollTop;if(autocomplete.classList.contains("show"))placeAutocomplete();},{passive:true});
+  editor.addEventListener("keydown",e=>{
+    if(detectLanguage(editor.value)==="python"){
+      if(e.key==="Escape"&&autocomplete.classList.contains("show")){autocomplete.classList.remove("show");return;}
+      if(e.ctrlKey&&e.code==="Space"){e.preventDefault();acIndex=0;renderAutocomplete(true);return;}
+      if(autocomplete.classList.contains("show")&&acItems.length&&(e.key==="ArrowDown"||e.key==="ArrowUp")){
+        e.preventDefault();acIndex=(acIndex+(e.key==="ArrowDown"?1:-1)+acItems.length)%acItems.length;renderAutocomplete(true);return;
+      }
+      if(pythonIndent(e))return;
+      if(e.key==="."||e.key==="_"||/[A-Za-z0-9]/.test(e.key))setTimeout(()=>renderAutocomplete(false),0);
+    }
+  });
+  editor.addEventListener("scroll",()=>{if(autocomplete.classList.contains("show"))placeAutocomplete();});
+  autocomplete.addEventListener("mousedown",e=>{const el=e.target.closest("[data-ac-index]");if(!el)return;e.preventDefault();acceptAutocomplete(Number(el.dataset.acIndex));});
+  document.addEventListener("click",e=>{if(e.target!==editor&&!autocomplete.contains(e.target))autocomplete.classList.remove("show");});
+  setLanguage("auto");
+  updateLineNumbers();
+  restoreSession();
+  send.addEventListener("click",sendCommand);
+  input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();sendCommand();}});
+
+  qsa(".quick").forEach(b=>b.addEventListener("click",()=>{input.value=b.dataset.command;sendCommand();}));
+  copyCorrected.addEventListener("click",async()=>{
+    if(!correctedOutput.value.trim()){log("ANABEL: não há código corrigido para copiar.");return;}
+    try{
+      await navigator.clipboard.writeText(correctedOutput.value);
+      status.textContent="Código corrigido copiado.";
+      log("ANABEL: código corrigido copiado para a área de transferência.");
+    }catch(e){
+      correctedOutput.focus();correctedOutput.select();
+      status.textContent="Selecione e copie manualmente.";
+      log("ANABEL: o navegador bloqueou a cópia automática; o código foi selecionado.");
+    }
+  });
+
+  if(new URLSearchParams(location.search).get("selftest")==="1"){
+    const checks=[
+      ["DOM",!!canvas&&!!editor&&!!sandbox&&!!input&&!!send],
+      ["Canvas",!!ctx],
+      ["Intent: análise",intent("Anabel analise meu codigo").type==="analyze"],
+      ["Intent: pergunta",intent("como criar um jogo").type==="question"],
+      ["Intent: ideias",intent("Anabel quero uma dica de jogo de estrategia").type==="ideas"],
+      ["Intent: pesquisa",intent("/pesquisar Canvas").type==="research"],
+      ["Intent: pesquisa + código",intent("/pesquisar codigo canvas").type==="researchCode"],
+      ["Extrator de código",extractCodeBlocks("```js\nconst x=1;\nconsole.log(x);\n```").length===1],
+      ["Leitor web",typeof readWebPage==="function"],
+      ["Loop autônomo",typeof autonomousSearch==="function"&&searchVariations("canvas").length===4],
+      ["Código natural",intent("quero o código de um botão javascript").type==="researchCode"],
+      ["Qualidade autônoma",codeQualityScore("function x(){try{return 1}catch(e){throw e}}","javascript").score>0],
+      ["Intent: Space Invaders",intent("crie space invaders").type==="space"],
+      ["Intent: aprovação",intent("sim").type==="confirm"],
+      ["Intent: URL",intent("https://example.com/test.html").type==="url"],
+      ["Intent: código",intent("me dê o código").type==="generate"],
+      ["var→let",refactorVar("var x=1;").code.includes("let x")],
+      ["console.log",removeLogs("console.log(1);\nlet x=1;").count===1],
+      ["Arrow",arrows("const f=function(a){return a+1;};").count===1],
+      ["Sandbox",sandbox.getAttribute("sandbox")==="allow-scripts"],
+      ["Python detector",detectLanguage("def soma(a,b):\n    return a+b")==="python"],
+      ["Python autocomplete",pythonSuggestions().length>0],
+      ["Web runner",typeof webRuntimeHTML==="function"],
+      ["Mobile tabs",qsa(".tab").length===3],
+      ["Mobile pad",qsa(".pad").length===3],
+      ["Fontes",typeof addSource==="function"],
+      ["Linhas numeradas",!!lineNumbers],
+      ["Persistência local",typeof saveSession==="function"&&typeof restoreSession==="function"],
+      ["Fallback Pyodide",/v314\.0\.7\/full|v0\.29\.5\/full/.test(pythonRuntimeHTML())],
+      ["Resize com debounce",typeof debouncedResize==="function"],
+      ["Referrer do Sandbox",sandbox.getAttribute("referrerpolicy")==="no-referrer"],
+      ["Sandbox sem same-origin",!sandbox.getAttribute("sandbox").includes("allow-same-origin")]
+    ];
+    const ok=checks.filter(x=>x[1]).length;
+    log("SELFTEST: "+ok+"/"+checks.length+" verificações aprovadas.");
+    checks.filter(x=>!x[1]).forEach(x=>log("SELFTEST FALHA: "+x[0]));
+  }
+})();
+
+/* END */
+</script>
+</body>
+</html>

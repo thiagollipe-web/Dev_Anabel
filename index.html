@@ -81,6 +81,126 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
 </section>
 <section id="pad"><button class="pad" id="left" type="button">◀ ESQ</button><button class="pad" id="right" type="button">DIR ▶</button></section>
 <script>
+
+"use strict";
+(()=> {
+  const $=(s,r=document)=>r.querySelector(s);
+  const $=(s,r=document)=>[...r.querySelectorAll(s)];
+  const canvas=$("#terminal"),ctx=canvas.getContext("2d",{alpha:false});
+  const editor=$("#editor"),sandbox=$("#sandbox"),input=$("#input"),send=$("#send");
+  const fileInput=$("#file-input"),sources=$("#sources"),status=$("#status");
+  const state={
+    theme:"green",color:"#00ff33",busy:false,queued:false,sandboxUrl:"",
+    history:[
+      "ANABEL: sistema iniciado.",
+      "ANABEL: bot local sem LLM.",
+      "ANABEL: conhecimento, regras, pesquisa e ferramentas ativas."
+    ],
+    sourceList:[],snapshots:[],ideas:[],selectedIdea:null
+  };
+
+  const norm=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+  const esc=v=>String(v).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c]));
+  function log(v){state.history.push(String(v));drawLater();}
+  function drawLater(){if(state.queued)return;state.queued=requestAnimationFrame(()=>{state.queued=false;draw();});}
+  function draw(){
+    const r=canvas.getBoundingClientRect(),d=Math.max(1,Math.min(2,devicePixelRatio||1));
+    const w=Math.max(1,Math.floor((r.width||450)*d)),h=Math.max(1,Math.floor((r.height||450)*d));
+    if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
+    const cw=r.width||450,ch=r.height||450;
+    ctx.setTransform(d,0,0,d,0,0);ctx.fillStyle="#000";ctx.fillRect(0,0,cw,ch);
+    ctx.fillStyle=state.color;ctx.shadowColor=state.color;ctx.shadowBlur=3;ctx.font="12px monospace";ctx.textBaseline="top";
+    const lh=17,max=Math.max(1,Math.floor((ch-12)/lh)),start=Math.max(0,state.history.length-max),chars=Math.max(30,Math.floor((cw-18)/7.1));
+    for(let i=start;i<state.history.length;i++){let t=state.history[i].replace(/\s+/g," ").trim();if(t.length>chars)t=t.slice(0,chars-1)+"…";ctx.fillText(t,9,7+(i-start)*lh);}
+    ctx.shadowBlur=0;
+  }
+  function switchTab(i){
+    i=Number(i);if(![0,1,2].includes(i))return;
+    $(".tab").forEach((b,n)=>{b.classList.toggle("active",n===i);b.setAttribute("aria-selected",String(n===i));});
+    $(".panel").forEach((p,n)=>p.classList.toggle("visible",n===i));
+    if(i===0)drawLater();
+  }
+  function theme(v){
+    state.theme=v==="amber"?"amber":"green";
+    document.documentElement.toggleAttribute("data-theme",state.theme==="amber");
+    if(state.theme==="amber")state.color="#ffb000";else state.color="#00ff33";
+    const title=sandbox.contentDocument?.getElementById("title");if(title)title.style.color=state.color;
+    drawLater();
+  }
+  function snapshot(label){state.snapshots.push({label,code:editor.value});if(state.snapshots.length>40)state.snapshots.shift();}
+  function undo(){
+    const x=state.snapshots.pop();if(!x){log("ANABEL: não há estado anterior.");return;}
+    editor.value=x.code;log("ANABEL: estado restaurado → "+x.label);switchTab(1);
+  }
+  function revokeSandbox(){if(state.sandboxUrl){URL.revokeObjectURL(state.sandboxUrl);state.sandboxUrl="";}}
+  function run(code){
+    if(!String(code||"").trim()){log("ANABEL: não há código para executar.");return false;}
+    revokeSandbox();
+    const themed=state.theme==="amber"?String(code).replaceAll("#00ff33","#ffb000").replaceAll("#0f3","#ffb000"):String(code);
+    state.sandboxUrl=URL.createObjectURL(new Blob([themed],{type:"text/html;charset=utf-8"}));
+    sandbox.src=state.sandboxUrl;log("ANABEL: código enviado ao Sandbox isolado.");switchTab(2);return true;
+  }
+  function post(command){
+    if(!sandbox.contentWindow){log("ANABEL: Sandbox ainda não está pronto.");return;}
+    sandbox.contentWindow.postMessage({source:"dev-anabel",command},"*");
+  }
+  function renderSources(){
+    if(!state.sourceList.length){sources.classList.remove("show");sources.innerHTML="";return;}
+    sources.innerHTML=state.sourceList.slice(-15).map(s=>'<div class="source"><span>['+esc(s.kind)+']</span> <a href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer">'+esc(s.title)+'</a><div>'+esc(s.note)+'</div></div>').join("");
+    sources.classList.add("show");
+  }
+  function addSource(s){
+    if(!s?.url||state.sourceList.some(x=>x.url===s.url))return;
+    state.sourceList.push({kind:s.kind||"WEB",title:s.title||s.url,url:s.url,note:s.note||""});renderSources();
+  }
+  async function handleFiles(files){
+    for(const file of [...(files||[])]){
+      const ext=(file.name.split(".").pop()||"").toLowerCase();
+      const allowed=["html","htm","js","mjs","css","json","txt","md","xml","svg","csv","py","java","c","cpp","h","hpp","cs","ts","tsx","jsx"];
+      if(!allowed.includes(ext)){log("ANABEL: formato não suportado → "+file.name);continue;}
+      try{snapshot("antes de anexar "+file.name);editor.value=await file.text();log("SISTEMA: arquivo anexado → "+file.name);}
+      catch(e){console.error(e);log("ANABEL: falha ao ler "+file.name);}
+    }
+    switchTab(1);fileInput.value="";
+  }
+  async function loadUrl(url){
+    let target=url;
+    try{
+      const u=new URL(url),p=u.pathname.split("/").filter(Boolean),i=p.indexOf("blob");
+      if(u.hostname==="github.com"&&i>=2&&p.length>i+2)target="https://raw.githubusercontent.com/"+p[0]+"/"+p[1]+"/"+p[i+1]+"/"+p.slice(i+2).join("/");
+    }catch(e){}
+    status.textContent="Carregando URL…";
+    try{
+      const c=new AbortController(),timer=setTimeout(()=>c.abort(),12000);
+      const r=await fetch(target,{signal:c.signal});clearTimeout(timer);
+      if(!r.ok)throw new Error("HTTP "+r.status);
+      snapshot("antes do carregamento remoto");editor.value=await r.text();
+      addSource({kind:"URL",title:target,url:target,note:"Arquivo carregado diretamente da rede."});
+      log("ANABEL: conteúdo remoto carregado.");switchTab(1);status.textContent="URL carregada.";
+    }catch(e){console.error(e);log("ANABEL: a URL não pôde ser lida. O servidor pode bloquear CORS.");status.textContent="Falha na URL.";}
+  }
+  function exportCode(){
+    if(!editor.value.trim()){log("ANABEL: buffer vazio.");return;}
+    const url=URL.createObjectURL(new Blob([editor.value],{type:"text/html;charset=utf-8"})),a=document.createElement("a");
+    a.href=url;a.download="dev_anabel_export.html";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),0);log("ANABEL: exportação concluída.");
+  }
+  Object.assign(window,{switchTab,changeTheme:theme,exportCode,handleFileAttach:i=>handleFiles(i?.files||[]),DevAnabel:{state,switchTab,theme,run,undo,loadUrl,handleFiles}});
+  window.addEventListener("resize",drawLater,{passive:true});
+  window.addEventListener("orientationchange",drawLater,{passive:true});
+  sandbox.addEventListener("load",()=>{const t=sandbox.contentDocument?.getElementById("title");if(t)t.style.color=state.color;});
+  fileInput.addEventListener("change",e=>handleFiles(e.target.files));
+  $("#export").addEventListener("click",exportCode);
+  $("#undo").addEventListener("click",undo);
+  $("#theme").addEventListener("change",e=>theme(e.target.value));
+  $(".tab").forEach((b,i)=>b.addEventListener("click",()=>switchTab(i)));
+  $("#left").addEventListener("pointerdown",e=>{e.preventDefault();post("left");});
+  $("#right").addEventListener("pointerdown",e=>{e.preventDefault();post("right");});
+  ["dragenter","dragover"].forEach(t=>editor.addEventListener(t,e=>{e.preventDefault();editor.classList.add("drop");}));
+  editor.addEventListener("dragleave",e=>{e.preventDefault();editor.classList.remove("drop");});
+  editor.addEventListener("drop",e=>{e.preventDefault();editor.classList.remove("drop");handleFiles(e.dataTransfer.files);});
+  window.addEventListener("beforeunload",revokeSandbox);
+  draw();
+
 /* APPEND */
 </script>
 </body>

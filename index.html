@@ -113,7 +113,8 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   const editor=$("#editor"),sandbox=$("#sandbox"),input=$("#input"),send=$("#send");
   const fileInput=$("#file-input"),sources=$("#sources"),status=$("#status");
   const reviewSummary=$("#review-summary"),reviewList=$("#review-list"),correctedOutput=$("#corrected-output"),copyCorrected=$("#copy-corrected");
-  const autocomplete=$("#autocomplete"),editorMeta=$("#editor-meta");\n  let runtimeKind="",pythonRuntimeReady=false,pendingPythonCode=null,acItems=[],acIndex=0;
+  const autocomplete=$("#autocomplete"),editorMeta=$("#editor-meta");
+  let runtimeKind="",pythonRuntimeReady=false,pendingPythonCode=null,acItems=[],acIndex=0;
   const state={
     theme:"green",color:"#00ff33",busy:false,queued:false,sandboxUrl:"",language:"auto",
     history:[

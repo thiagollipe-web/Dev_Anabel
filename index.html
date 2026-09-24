@@ -172,7 +172,9 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   }
   function pythonRuntimeHTML(){
     const pyodideCdn="https://cdn.jsdelivr.net/pyodide/v314.0.7/full/";
-    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Python Runtime</title><style>body{margin:0;background:#000;color:#00ff33;font:12px monospace;padding:10px}#state{border:1px solid #333;padding:7px;margin-bottom:8px}pre{white-space:pre-wrap;margin:0;border:1px solid #333;background:#050505;padding:10px;min-height:220px}#out{overflow:auto} .err{color:#ff6666}.ok{color:#00ff33}</style></head><body><div id="state">PYTHON: inicializando CPython via WebAssembly…</div><pre id="out"></pre><script>(async()=>{const state=document.getElementById("state"),out=document.getElementById("out");let pyodide;function send(type,payload){parent.postMessage(Object.assign({source:"dev-anabel-python",type},payload||{}),"*")}function emit(kind,text){const s=String(text??"");if(s)out.textContent+=s;send("output",{kind,text:s})}function loadScript(src){return new Promise((resolve,reject)=>{const s=document.createElement("script");s.src=src;s.onload=resolve;s.onerror=reject;document.head.appendChild(s)})}try{const pyodideCdn="https://cdn.jsdelivr.net/pyodide/v314.0.7/full/";await loadScript(pyodideCdn+"pyodide.js");pyodide=await loadPyodide({indexURL:pyodideCdn});pyodide.setStdout({batched:s=>emit("stdout",s)});pyodide.setStderr({batched:s=>emit("stderr",s)});state.textContent="PYTHON: ambiente pronto · estado persistente";state.className="ok";send("ready",{version:String(pyodide.runPython("import sys; sys.version"))})}catch(e){state.textContent="PYTHON: falha ao inicializar";state.className="err";send("error",{error:String(e?.stack||e)})}window.addEventListener("message",async e=>{if(e.data?.source!=="dev-anabel-python"||!pyodide)return;if(e.data.action==="reset"){location.reload();return}if(e.data.action!=="run")return;const code=String(e.data.code||"");state.textContent="PYTHON: executando…";try{await pyodide.loadPackagesFromImports(code);const result=await pyodide.runPythonAsync(code);if(result!==undefined&&result!==null){let textResult;try{textResult=String(result.toString?.()??result)}catch(_){textResult=String(result)}emit("result",textResult+"\\n")}send("done",{ok:true})}catch(err){emit("stderr",String(err?.stack||err)+"\\n");send("done",{ok:false,error:String(err?.stack||err)})}finally{state.textContent="PYTHON: pronto"}}})})()<\/script></body></html>';
+    const boot=`(async()=>{const state=document.getElementById("state"),out=document.getElementById("out"),NL=String.fromCharCode(10);let pyodide=null;function send(type,data){parent.postMessage(Object.assign({source:"dev-anabel-python",type:type},data||{}),"*")}function emit(kind,value){const s=String(value==null?"":value);if(s)out.textContent+=s;send("output",{kind:kind,text:s})}function loadScript(src){return new Promise(function(resolve,reject){const s=document.createElement("script");s.src=src;s.onload=resolve;s.onerror=reject;document.head.appendChild(s)})}try{await loadScript("${pyodideCdn}pyodide.js");pyodide=await loadPyodide({indexURL:"${pyodideCdn}"});pyodide.setStdout({batched:function(s){emit("stdout",s)}});pyodide.setStderr({batched:function(s){emit("stderr",s)}});state.textContent="PYTHON: ambiente pronto";send("ready",{version:String(pyodide.runPython("import sys;sys.version"))})}catch(err){state.textContent="PYTHON: falha ao inicializar";send("error",{error:String(err)})}window.addEventListener("message",async function(e){const d=e.data||{};if(d.source!=="dev-anabel-python"||!pyodide||d.action!=="run")return;state.textContent="PYTHON: executando…";try{await pyodide.loadPackagesFromImports(String(d.code||""));const result=await pyodide.runPythonAsync(String(d.code||""));if(result!==undefined&&result!==null)emit("result",String(result)+NL);send("done",{ok:true})}catch(err){emit("stderr",String(err)+NL);send("done",{ok:false,error:String(err)})}state.textContent="PYTHON: pronto"})})()`;
+    const safeBoot=boot.replace(/<\\/script/gi,"<\\\\/script");
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Python Runtime</title><style>body{margin:0;background:#000;color:#00ff33;font:12px monospace;padding:10px}#state{border:1px solid #333;padding:7px;margin-bottom:8px}pre{white-space:pre-wrap;margin:0;border:1px solid #333;background:#050505;padding:10px;min-height:220px;overflow:auto}</style></head><body><div id="state">PYTHON: carregando…</div><pre id="out"></pre><script>'+safeBoot+'<\\/script></body></html>';
   }
   function postPython(action,code){
     if(!sandbox.contentWindow){log("ANABEL: ambiente Python ainda não está disponível.");return false;}
@@ -304,141 +306,16 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     {keys:["var let","var por let","var versus let"],title:"var x let",text:"let tem escopo de bloco. var segue regras antigas de escopo.",example:"let pontos=0; const nome='Anabel';",tip:"Use const quando não houver reatribuição.",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/let",source:"MDN — let"},
     {keys:["console.log","console log"],title:"console.log()",text:"console.log() envia uma mensagem ao console e é útil durante a depuração.",example:"console.log('teste');",tip:"Remova logs de diagnóstico desnecessários no código final.",url:"https://developer.mozilla.org/docs/Web/API/console/log_static",source:"MDN — console.log()"},
     {keys:["arrow function","arrow functions","funcao seta","função seta"],title:"Arrow Function",text:"Arrow Function é uma sintaxe curta para funções e tem regras próprias de this.",example:"const dobro=x=>x*2;",tip:"A Anabel só converte automaticamente funções simples com retorno direto.",url:"https://developer.mozilla.org/docs/Web/JavaScript/Reference/Functions/Arrow_functions",source:"MDN — Arrow functions"},
-    {keys:["python","python linguagem"],title:"Python",text:"Python é uma linguagem de alto nível com sintaxe enxuta, indentação significativa e grande ecossistema.",example:"def soma(a,b):\n    return a+b",tip:"No Professor Python, use Ctrl+Espaço para autocomplete e Tab para aceitar uma sugestão.",url:"https://docs.python.org/3/",source:"Python — documentação oficial"},
-    {keys:["def python","funcao python","função python"],title:"def",text:"def cria uma função em Python. O bloco pertence à função pela indentação.",example:"def saudacao(nome):\n    return f\"Olá, {nome}!\"",tip:"Mantenha quatro espaços por nível e deixe parâmetros explícitos.",url:"https://docs.python.org/3/reference/compound_stmts.html#function-definitions",source:"Python — Function definitions"},
-    {keys:["list python","lista python"],title:"list",text:"list é a estrutura mutável de sequência mais comum em Python.",example:"numeros=[1,2,3]\nnumeros.append(4)",tip:"Use compreensão de listas quando ela continuar legível.",url:"https://docs.python.org/3/tutorial/datastructures.html",source:"Python — Data Structures"},
-    {keys:["dict python","dicionario python","dicionário python"],title:"dict",text:"dict associa chaves a valores e é útil quando o acesso principal é por chave.",example:"aluno={\"nome\":\"Ana\",\"idade\":10}",tip:"Use .get() quando a chave puder não existir.",url:"https://docs.python.org/3/library/stdtypes.html#mapping-types-dict",source:"Python — dict"},
-    {keys:["for python","loop python"],title:"for",text:"for percorre itens de um iterável.",example:"for i in range(5):\n    print(i)",tip:"Prefira iterar diretamente sobre os valores quando não precisar do índice.",url:"https://docs.python.org/3/reference/compound_stmts.html#the-for-statement",source:"Python — for statement"},
-    {keys:["if python","condicional python"],title:"if / elif / else",text:"Condicionais escolhem caminhos com base em expressões booleanas.",example:"if nota>=7:\n    print(\"Aprovado\")\nelse:\n    print(\"Revisar\")",tip:"Não esqueça os dois-pontos e a indentação do bloco.",url:"https://docs.python.org/3/reference/compound_stmts.html#the-if-statement",source:"Python — if statement"},
-    {keys:["comprehension python","compreensao lista"],title:"List comprehension",text:"Compreensão de lista cria uma nova lista a partir de um iterável de forma compacta.",example:"pares=[x for x in numeros if x%2==0]",tip:"Evite compreensões excessivamente longas.",url:"https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions",source:"Python — List comprehensions"},
-    {keys:["pip python","instalar pacote python"],title:"pip / pacotes",text:"No ambiente web do Professor Python, módulos compatíveis com Pyodide podem ser carregados automaticamente a partir dos imports.",example:"import numpy as np\nprint(np.arange(5))",tip:"Pacotes com extensões nativas podem exigir uma versão compatível com Pyodide.",url:"https://pyodide.org/en/stable/usage/loading-packages.html",source:"Pyodide — Loading packages"},
-    {keys:["try except python","tratamento erro python"],title:"try / except",text:"try/except trata exceções sem encerrar o fluxo de forma abrupta.",example:"try:\n    valor=int(entrada)\nexcept ValueError:\n    print(\"Valor inválido\")",tip:"Capture exceções específicas antes de usar Exception de forma genérica.",url:"https://docs.python.org/3/tutorial/errors.html",source:"Python — Errors and Exceptions"},
-    {keys:["import python","modulo python","módulo python"],title:"import",text:"import carrega módulos e nomes disponíveis no ambiente.",example:"import math\nprint(math.sqrt(25))",tip:"Evite imports com *; prefira nomes explícitos.",url:"https://docs.python.org/3/reference/import.html",source:"Python — import system"}
-  ];
-
-  const PY_KEYWORDS=["and","as","assert","async","await","break","case","class","continue","def","del","elif","else","except","False","finally","for","from","global","if","import","in","is","lambda","match","None","nonlocal","not","or","pass","raise","return","True","try","while","with","yield"];
-  const PY_BUILTINS=["abs","all","any","bool","dict","dir","enumerate","filter","float","input","int","isinstance","len","list","map","max","min","open","print","range","reversed","round","set","sorted","str","sum","tuple","type","zip","__name__"];
-  const PY_MODULES=["asyncio","collections","datetime","functools","json","math","os","random","re","statistics","time","typing","urllib","pathlib","numpy","pandas","matplotlib"];
-  const PY_METHODS={
-    str:["upper","lower","strip","split","replace","startswith","endswith","find","join","format"],
-    list:["append","extend","insert","remove","pop","clear","index","count","sort","reverse","copy"],
-    dict:["get","keys","values","items","update","pop","setdefault","clear"],
-    set:["add","remove","discard","pop","clear","union","intersection","difference"],
-    math:["sqrt","sin","cos","tan","floor","ceil","pi","e"],
-    random:["random","randint","choice","choices","shuffle","sample"],
-    os:["getcwd","listdir","mkdir","remove","path"],
-    json:["loads","dumps","load","dump"],
-    re:["search","match","findall","sub","split","compile"],
-    pathlib:["Path"]
-  };
-  const PY_SIGNATURES={
-    print:"print(*objects, sep=' ', end='\\n', file=None, flush=False)",
-    len:"len(obj)",
-    range:"range(start, stop[, step])",
-    enumerate:"enumerate(iterable, start=0)",
-    zip:"zip(*iterables)",
-    str:"str(object='')",
-    int:"int(x=0, base=10)",
-    float:"float(x=0)",
-    list:"list(iterable=())",
-    dict:"dict(**kwargs)",
-    sorted:"sorted(iterable, *, key=None, reverse=False)",
-    sum:"sum(iterable, /, start=0)"
-  };
-
-  function currentPythonContext(){
-    const pos=editor.selectionStart||0,before=editor.value.slice(0,pos);
-    const lineStart=before.lastIndexOf("\n")+1,line=before.slice(lineStart);
-    const dot=line.match(/([A-Za-z_]\w*)\.([A-Za-z_]\w*)?$/);
-    const token=line.match(/([A-Za-z_]\w*)$/)?.[1]||"";
-    const importCtx=/(?:^|[;\s])(from|import)\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)?$/.exec(line);
-    return {pos,before,line,lineStart,dot,token,importCtx};
-  }
-
-  function localPythonSymbols(){
-    const code=editor.value;
-    const out=new Set();
-    for(const re of [/\bdef\s+([A-Za-z_]\w*)/g,/\bclass\s+([A-Za-z_]\w*)/g,/\b([A-Za-z_]\w*)\s*=\s*(?![=])/g,/\bas\s+([A-Za-z_]\w*)/g]){
-      let m;while((m=re.exec(code)))out.add(m[1]);
-    }
-    return [...out];
-  }
-
-  function pythonSuggestions(){
-    const {dot,token,importCtx}=currentPythonContext();
-    let prefix=token;
-    let list=[];
-    if(dot){
-      prefix=dot[2]||"";
-      list=(PY_METHODS[dot[1]]||PY_BUILTINS).map(x=>({label:x,kind:PY_METHODS[dot[1]]?"método":"Python"}));
-    }else if(importCtx){
-      prefix=importCtx[2]||"";
-      list=PY_MODULES.map(x=>({label:x,kind:"módulo"}));
-    }else{
-      list=[...PY_KEYWORDS.map(x=>({label:x,kind:"palavra"})),...PY_BUILTINS.map(x=>({label:x,kind:"builtin"})),...PY_MODULES.map(x=>({label:x,kind:"módulo"})),...localPythonSymbols().map(x=>({label:x,kind:"seu código"}))];
-    }
-    const p=norm(prefix);
-    return [...new Map(list.filter(x=>!p||norm(x.label).startsWith(p)).map(x=>[x.label,x])).values()].slice(0,14);
-  }
-
-  function placeAutocomplete(){
-    const {before,line,lineStart}=currentPythonContext();
-    const col=before.length-lineStart;
-    const lineHeight=editor.clientHeight?parseFloat(getComputedStyle(editor).lineHeight)||17:17;
-    let top=10+(before.split("\n").length-1)*lineHeight-editor.scrollTop+lineHeight+2;
-    let left=10+Math.min(col,48)*7.2-editor.scrollLeft;
-    top=Math.max(5,Math.min(editor.clientHeight-225,top));
-    left=Math.max(5,Math.min(editor.clientWidth-395,left));
-    autocomplete.style.top=top+"px";autocomplete.style.left=left+"px";
-  }
-
-  function renderAutocomplete(force=false){
-    if(detectLanguage(editor.value)!=="python"){autocomplete.classList.remove("show");return;}
-    const items=pythonSuggestions();
-    if(!items.length&&!force){autocomplete.classList.remove("show");return;}
-    acItems=items;acIndex=Math.min(acIndex,Math.max(0,acItems.length-1));
-    autocomplete.innerHTML=acItems.length?acItems.map((x,i)=>'<div class="ac-item'+(i===acIndex?' selected':'')+'" role="option" aria-selected="'+(i===acIndex?'true':'false')+'" data-ac-index="'+i+'"><span>'+esc(x.label)+'</span><span class="ac-kind">'+esc(x.kind)+'</span></div>').join(""):'<div class="ac-empty">Nenhuma sugestão.</div>';
-    autocomplete.classList.add("show");placeAutocomplete();
-  }
-
-  function acceptAutocomplete(index=acIndex){
-    if(!acItems.length)return false;
-    const item=acItems[Math.max(0,Math.min(acItems.length-1,index))];
-    const {pos,line,lineStart,dot}=currentPythonContext();
-    const start=dot?lineStart+line.lastIndexOf(".")+1:pos-(line.match(/([A-Za-z_]\w*)$/)?.[1]?.length||0);
-    const before=editor.value.slice(0,start),after=editor.value.slice(pos);
-    editor.value=before+item.label+after;
-    editor.selectionStart=editor.selectionEnd=start+item.label.length;
-    setLanguage("python");autocomplete.classList.remove("show");
-    if(PY_SIGNATURES[item.label])status.textContent=PY_SIGNATURES[item.label];
-    editor.focus();editor.dispatchEvent(new Event("input",{bubbles:true}));
-    return true;
-  }
-
-  function pythonIndent(e){
-    if(detectLanguage(editor.value)!=="python")return false;
-    if(e.key==="Tab"){
-      e.preventDefault();
-      if(autocomplete.classList.contains("show")&&acItems.length)return acceptAutocomplete();
-      const a=editor.selectionStart,b=editor.selectionEnd,text=editor.value.slice(a,b);
-      const indent=/^\s*/.exec(editor.value.slice(0,editor.selectionStart).split("\n").pop()||"")?.[0]||"";
-      if(a!==b)editor.setRangeText(text.split("\n").map(x=>indent+"    "+x).join("\n"),a,b,"select");
-      else editor.setRangeText("    ",a,b,"end");
-      renderAutocomplete(false);return true;
-    }
-    if(e.key==="Enter"){
-      if(autocomplete.classList.contains("show")&&acItems.length){e.preventDefault();return acceptAutocomplete();}
-      e.preventDefault();
-      const pos=editor.selectionStart,before=editor.value.slice(0,pos),line=before.slice(before.lastIndexOf("\n")+1);
-      const base=(line.match(/^\s*/)?.[0]||"");
-      const extra=/(:\s*|\b(elif|else|try|except|finally)\s*:)\s*$/.test(line)?"    ":"";
-      const dedent=/^\s*(elif|else|except|finally)\b/.test(line)?"    ":"";
-      editor.setRangeText("\n"+base+extra,pos,editor.selectionEnd,"end");
-      if(dedent&&editor.selectionStart>=4)editor.setRangeText("",editor.selectionStart-4,editor.selectionStart-4+4,"end");
-      renderAutocomplete(false);return true;
-    }
-    return false;
-  }
+    {keys:["python","python linguagem"],title:"Python",text:"Python é uma linguagem de alto nível com sintaxe enxuta, indentação significativa e grande ecossistema.",example:"def soma(a,b): return a+b",tip:"Use Ctrl+Espaço para autocomplete e Tab para aceitar uma sugestão.",url:"https://docs.python.org/3/",source:"Python — documentação oficial"},
+    {keys:["def python","funcao python","função python"],title:"def",text:"def cria uma função em Python; o bloco pertence à função pela indentação.",example:"def saudacao(nome): return f\"Olá, {nome}!\"",tip:"Mantenha quatro espaços por nível.",url:"https://docs.python.org/3/reference/compound_stmts.html#function-definitions",source:"Python — Function definitions"},
+    {keys:["list python","lista python"],title:"list",text:"list é uma sequência mutável muito usada em Python.",example:"numeros=[1,2,3]; numeros.append(4)",tip:"Use compreensão de listas quando continuar legível.",url:"https://docs.python.org/3/tutorial/datastructures.html",source:"Python — Data Structures"},
+    {keys:["dict python","dicionario python","dicionário python"],title:"dict",text:"dict associa chaves a valores e é útil para acesso por chave.",example:"aluno={\"nome\":\"Ana\",\"idade\":10}",tip:"Use .get() quando a chave puder não existir.",url:"https://docs.python.org/3/library/stdtypes.html#mapping-types-dict",source:"Python — dict"},
+    {keys:["for python","loop python"],title:"for",text:"for percorre itens de um iterável.",example:"for i in range(5): print(i)",tip:"Itere diretamente sobre os valores quando não precisar do índice.",url:"https://docs.python.org/3/reference/compound_stmts.html#the-for-statement",source:"Python — for statement"},
+    {keys:["if python","condicional python"],title:"if / elif / else",text:"Condicionais escolhem caminhos com base em expressões booleanas.",example:"if nota>=7: print(\"Aprovado\")",tip:"Não esqueça os dois-pontos e a indentação.",url:"https://docs.python.org/3/reference/compound_stmts.html#the-if-statement",source:"Python — if statement"},
+    {keys:["comprehension python","compreensao lista"],title:"List comprehension",text:"Cria listas de forma compacta a partir de um iterável.",example:"pares=[x for x in numeros if x%2==0]",tip:"Evite compreensões longas demais.",url:"https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions",source:"Python — List comprehensions"},
+    {keys:["pip python","instalar pacote python"],title:"pip / pacotes",text:"No ambiente web, imports compatíveis podem ser carregados automaticamente pelo Pyodide.",example:"import numpy as np; print(np.arange(5))",tip:"Pacotes nativos precisam de uma versão compatível com Pyodide.",url:"https://pyodide.org/en/stable/usage/loading-packages.html",source:"Pyodide — Loading packages"},
+    {keys:["try except python","tratamento erro python"],title:"try / except",text:"try/except trata exceções sem encerrar o fluxo.",example:"try: valor=int(entrada)",tip:"Capture exceções específicas.",url:"https://docs.python.org/3/tutorial/errors.html",source:"Python — Errors and Exceptions"},
+    {keys:["import python","modulo python","módulo python"],title:"import",text:"import carrega módulos e nomes disponíveis no ambiente.",example:"import math; print(math.sqrt(25))",tip:"Evite imports com *.",url:"https://docs.python.org/3/reference/import.html",source:"Python — import system"}
 
   const IDEAS=[
     {title:"Reino dos 16 Turnos",pitch:"Transforme uma vila em um reino em 16 turnos; economia, população, defesa e expansão disputam o mesmo orçamento.",mechanics:["recursos","território","defesa","eventos","16 turnos"]},

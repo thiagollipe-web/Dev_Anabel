@@ -16,6 +16,9 @@ Bot retrô de desenvolvimento e aprendizado, sem LLM.
 - Ideias de jogos e seleção de proposta.
 - Geração de protótipos HTML/Canvas.
 - Refatoração local: var -> let, remoção de console.log() e Arrow Functions simples.
+- Base de conhecimento de bugs com regras sintoma → correção.
+- Motor de diagnóstico e auto-correção em cadeia, com limite de segurança e revisão dos sintomas restantes.
+- `/corrigir` usa o motor de auto-correção e registra cada correção aplicada.
 - Entrega autônoma do código selecionado diretamente no editor, com justificativa técnica e alternativas disponíveis na sessão.
 - Histórico e desfazer.
 - Anexação de arquivos textuais por seleção ou arrastar e soltar.

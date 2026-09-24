@@ -79,7 +79,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
 </div>
 <div id="status"></div>
 </section>
-<section id="pad"><button class="pad" id="left" type="button">◀ ESQ</button><button class="pad" id="right" type="button">DIR ▶</button></section>
+<section id="pad"><button class="pad" id="left" type="button">◀ ESQ</button><button class="pad" id="fire" type="button">FOGO</button><button class="pad" id="right" type="button">DIR ▶</button></section>
 <script>
 
 "use strict";
@@ -194,6 +194,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   $("#theme").addEventListener("change",e=>theme(e.target.value));
   qsa(".tab").forEach((b,i)=>b.addEventListener("click",()=>switchTab(i)));
   $("#left").addEventListener("pointerdown",e=>{e.preventDefault();post("left");});
+  $("#fire").addEventListener("pointerdown",e=>{e.preventDefault();post("fire");});
   $("#right").addEventListener("pointerdown",e=>{e.preventDefault();post("right");});
   ["dragenter","dragover"].forEach(t=>editor.addEventListener(t,e=>{e.preventDefault();editor.classList.add("drop");}));
   editor.addEventListener("dragleave",e=>{e.preventDefault();editor.classList.remove("drop");});
@@ -569,6 +570,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       ["Arrow",arrows("const f=function(a){return a+1;};").count===1],
       ["Sandbox",sandbox.getAttribute("sandbox")==="allow-scripts"],
       ["Mobile tabs",qsa(".tab").length===3],
+      ["Mobile pad",qsa(".pad").length===3],
       ["Fontes",typeof addSource==="function"]
     ];
     const ok=checks.filter(x=>x[1]).length;

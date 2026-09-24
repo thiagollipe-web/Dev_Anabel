@@ -684,6 +684,41 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(/game|jogo|sprite|player|enemy|score/.test(n))return "JavaScript 2D game implementation";
     return "JavaScript implementation example";
   }
+  function documentationRefs(query){
+    const n=norm(query),docs=[];
+    if(/canvas|getcontext|drawimage|requestanimationframe/.test(n))docs.push({
+      kind:"MDN",
+      title:"MDN — Canvas 2D",
+      url:"https://developer.mozilla.org/pt-BR/docs/Web/API/CanvasRenderingContext2D",
+      note:"Documentação oficial da API Canvas 2D."
+    });
+    if(/fetch|http|rede|network/.test(n))docs.push({
+      kind:"MDN",
+      title:"MDN — Fetch API",
+      url:"https://developer.mozilla.org/pt-BR/docs/Web/API/Window/fetch",
+      note:"Documentação oficial da Fetch API."
+    });
+    if(/cors|cross.?origin/.test(n))docs.push({
+      kind:"MDN",
+      title:"MDN — CORS",
+      url:"https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Guides/CORS",
+      note:"Documentação oficial sobre CORS."
+    });
+    if(/dom|queryselector|event|touch/.test(n))docs.push({
+      kind:"MDN",
+      title:"MDN — DOM",
+      url:"https://developer.mozilla.org/pt-BR/docs/Web/API/Document_Object_Model",
+      note:"Documentação oficial do DOM."
+    });
+    if(/python|pyodide/.test(n))docs.push({
+      kind:"PYTHON",
+      title:"Python — Documentação oficial",
+      url:"https://docs.python.org/pt-br/3/",
+      note:"Documentação oficial da linguagem Python."
+    });
+    return docs;
+  }
+
   async function autonomousSearch(query,reason="objetivo do usuário"){
     const q=String(query||"").trim();
     if(!q||autonomousBusy)return false;
@@ -708,7 +743,11 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
           if(ref?.url&&!seen.has(ref.url)){seen.add(ref.url);refs.push(ref);}
         });
       });
-      log("ANABEL: "+refs.length+" referências distintas para leitura.");
+      const docs=documentationRefs(q);
+      docs.forEach(ref=>{
+        if(!refs.some(x=>x.url===ref.url)){refs.push(ref);addSource(ref);}
+      });
+      log("ANABEL: "+refs.length+" referências distintas para leitura, incluindo documentação técnica.");
       const pages=await Promise.allSettled(refs.slice(0,16).map(async ref=>{
         const out=[];
         if(ref.kind==="GITHUB"){

@@ -162,7 +162,12 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     const x=state.snapshots.pop();if(!x){log("ANABEL: não há estado anterior.");return;}
     editor.value=x.code;log("ANABEL: estado restaurado → "+x.label);switchTab(1);
   }
-  function revokeSandbox(){if(state.sandboxUrl){URL.revokeObjectURL(state.sandboxUrl);state.sandboxUrl="";}runtimeKind="";pythonRuntimeReady=false;pendingPythonCode=null;}
+  function revokeSandbox(){
+    const oldUrl=state.sandboxUrl;
+    state.sandboxUrl="";
+    if(oldUrl){try{sandbox.src="about:blank";}catch(e){}try{URL.revokeObjectURL(oldUrl);}catch(e){}}
+    runtimeKind="";pythonRuntimeReady=false;pendingPythonCode=null;
+  }
   function detectLanguage(code){
     const s=String(code||"").trimStart();
     if(/^(<!doctype html|<html\b|<body\b|<canvas\b|<style\b|<script\b)/i.test(s)||/<(?:div|main|section|head|title)\b/i.test(s))return "html";
@@ -444,6 +449,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   }
   window.addEventListener("resize",debouncedResize,{passive:true});
   window.addEventListener("orientationchange",debouncedResize,{passive:true});
+  window.addEventListener("beforeunload",()=>{clearTimeout(resizeTimer);clearTimeout(saveTimer);saveSession();revokeSandbox();});
   sandbox.addEventListener("load",()=>{
     const t=sandbox.contentDocument?.getElementById("title");if(t)t.style.color=state.color;
     if(runtimeKind==="python")status.textContent="Ambiente Python carregado; aguardando CPython…";

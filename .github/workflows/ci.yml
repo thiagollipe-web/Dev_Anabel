@@ -53,7 +53,7 @@ jobs:
           const checks = [
             ['uma função ideas', (html.match(/\basync function ideas\s*\(/g) || []).length === 1],
             ['uma função smartAnswer', (html.match(/\basync function smartAnswer\s*\(/g) || []).length === 1],
-            ['intent exportado', html.includes('    intent\n  };')],
+            ['intent e motor exportados', /\bintent,\s*runDiagnostic,\s*autoFixSystem\b/.test(html)],
             ['sandbox isolado', html.includes('sandbox="allow-scripts"')],
             ['selftest presente', html.includes('SELFTEST:')],
             ['controle móvel de fogo', html.includes('id="fire"')],

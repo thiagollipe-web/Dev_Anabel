@@ -1663,8 +1663,8 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     const item=known(i.value);
     if(item){await smartAnswer(i.value);return;}
 
-    log("ANABEL: posso pesquisar, explicar, analisar o código, refatorar, gerar ideias ou executar o Sandbox.");
-    log("DICA: experimente “Anabel, pesquise Canvas”, “quero uma ideia de jogo” ou “analise meu código”.");
+    await smartAnswer(i.value);
+
   }
 
   async function sendCommand(){

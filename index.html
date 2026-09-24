@@ -247,21 +247,132 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     }
     switchTab(1);fileInput.value="";
   }
+  function isCodeUrl(url){
+    return /\.(?:js|mjs|css|py|ts|tsx|jsx|json|html|htm|xml|svg|c|cpp|h|hpp|cs)(?:[?#].*)?$/i.test(String(url||""));
+  }
+  function decodeHtmlText(text){
+    const box=document.createElement("textarea");
+    box.innerHTML=String(text||"");
+    return box.value;
+  }
+  function extractCodeBlocks(text,url=""){
+    const raw=String(text||"");
+    const blocks=[];
+    const fenced=/```([^\n`]*)\n([\s\S]*?)```/g;
+    let m;
+    while((m=fenced.exec(raw))){
+      const language=(m[1]||"").trim().toLowerCase();
+      const code=decodeHtmlText(m[2]).trim();
+      if(code.length>=30)blocks.push({language,code});
+    }
+    const html=/<pre[^>]*>\s*<code[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi;
+    while((m=html.exec(raw))){
+      const code=decodeHtmlText(m[1].replace(/<[^>]+>/g,"")).trim();
+      if(code.length>=30)blocks.push({language:"",code});
+    }
+    if(!blocks.length&&isCodeUrl(url)&&raw.trim().length>=30)blocks.push({language:"",code:raw.trim()});
+    return blocks.filter((x,i,a)=>a.findIndex(y=>y.code===x.code)===i).sort((x,y)=>y.code.length-x.code.length).slice(0,8);
+  }
+  function guessCodeLanguage(block,url="",hint=""){
+    const h=norm(hint),ext=String(url||"").match(/\.([a-z0-9]+)(?:[?#].*)?$/i)?.[1]?.toLowerCase();
+    if(h==="py"||h==="python"||ext==="py")return "python";
+    if(["ts","tsx"].includes(ext)||/typescript/.test(h))return "typescript";
+    if(["js","mjs","jsx"].includes(ext)||/javascript|js\b/.test(h))return "javascript";
+    if(ext==="css"||h==="css")return "css";
+    if(ext==="json"||h==="json")return "json";
+    if(["html","htm","xml","svg"].includes(ext)||/html|xml|svg/.test(h))return "html";
+    const s=String(block||"");
+    if(/(^|\n)\s*(from\s+\w+\s+import|import\s+\w+|def\s+\w+|print\s*\()/m.test(s))return "python";
+    if(/\b(const|let|var)\b|=>|document\.\w+|console\.log\s*\(/.test(s))return "javascript";
+    if(/<(!doctype|html|body|div|canvas|script|style)\b/i.test(s))return "html";
+    if(/^[^{]+\{[^}]*:[^}]*\}/m.test(s))return "css";
+    return "javascript";
+  }
+  function deliverCode(code,language,title,url){
+    const source=String(code||"").trim();
+    if(!source){log("ANABEL: não encontrei um bloco de código utilizável.");return false;}
+    snapshot("antes de entregar código pesquisado");
+    editor.value=source;
+    correctedOutput.value=source;
+    state.review.correctedCode=source;
+    state.language=language||guessCodeLanguage(source,url);
+    setLanguage(state.language);
+    switchTab(1);
+    if(url)addSource({kind:"CÓDIGO",title:title||"Código encontrado",url,note:"Código extraído da fonte pesquisada e carregado no editor."});
+    log("ANABEL: código entregue no editor → "+(title||"fonte pesquisada"));
+    log("ANABEL: linguagem detectada → "+String(state.language).toUpperCase()+" · "+source.length+" caracteres.");
+    status.textContent="Código pesquisado carregado no editor.";
+    return true;
+  }
+  async function readWebPage(url,opts={}){
+    const original=String(url||"").trim();
+    if(!original)throw new Error("URL vazia");
+    const timeout=opts.timeout||15000;
+    const targets=opts.codeFirst?[original,"https://r.jina.ai/"+original]:["https://r.jina.ai/"+original,original];
+    let lastErr=null;
+    for(const target of [...new Set(targets)]){
+      try{
+        const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
+        const r=await fetch(target,{signal:controller.signal,redirect:"follow"});
+        clearTimeout(timer);
+        if(!r.ok)throw new Error("HTTP "+r.status);
+        const text=await r.text();
+        if(text.trim())return {url:original,text,reader:target.startsWith("https://r.jina.ai/"),resolved:r.url||target};
+      }catch(e){lastErr=e;}
+    }
+    throw lastErr||new Error("Não foi possível ler a página");
+  }
+  async function readGithubRepoCode(url){
+    const m=String(url||"").match(/^https?:\/\/github\.com\/([^/]+)\/([^/#?]+)\/?(?:[?#].*)?$/i);
+    if(!m)return [];
+    const owner=m[1],repo=m[2];
+    try{
+      const tree=await httpJson("https://api.github.com/repos/"+encodeURIComponent(owner)+"/"+encodeURIComponent(repo)+"/git/trees/HEAD?recursive=1",12000);
+      const allow=/\.(?:js|mjs|ts|tsx|jsx|py|html|htm|css|json|java|c|cpp|h|hpp|cs|go|rs|php|rb)$/i;
+      const files=(tree.tree||[]).filter(x=>x.type==="blob"&&allow.test(x.path||"")&&!/(node_modules|dist|build|vendor|coverage|\.min\.)/i.test(x.path||"")).sort((x,y)=>x.path.length-y.path.length).slice(0,6);
+      const out=[];
+      for(const file of files){
+        try{
+          const raw="https://raw.githubusercontent.com/"+owner+"/"+repo+"/HEAD/"+file.path.split("/").map(encodeURIComponent).join("/");
+          const data=await readWebPage(raw,{codeFirst:true,timeout:12000});
+          const block=extractCodeBlocks(data.text,raw)[0];
+          const code=block?.code||data.text;
+          if(code&&code.length>=30)out.push({title:owner+"/"+repo+" / "+file.path,url:raw,code,language:guessCodeLanguage(code,raw,block?.language)});
+        }catch(e){}
+      }
+      return out;
+    }catch(e){return [];}
+  }
   async function loadUrl(url){
     let target=url;
     try{
       const u=new URL(url),p=u.pathname.split("/").filter(Boolean),i=p.indexOf("blob");
       if(u.hostname==="github.com"&&i>=2&&p.length>i+2)target="https://raw.githubusercontent.com/"+p[0]+"/"+p[1]+"/"+p[i+1]+"/"+p.slice(i+2).join("/");
     }catch(e){}
-    status.textContent="Carregando URL…";
+    status.textContent="Lendo site: "+target;
     try{
-      const c=new AbortController(),timer=setTimeout(()=>c.abort(),12000);
-      const r=await fetch(target,{signal:c.signal});clearTimeout(timer);
-      if(!r.ok)throw new Error("HTTP "+r.status);
-      snapshot("antes do carregamento remoto");editor.value=await r.text();state.language=/\.py(?:$|\?)/i.test(target)?"python":"auto";setLanguage(state.language);
-      addSource({kind:"URL",title:target,url:target,note:"Arquivo carregado diretamente da rede."});
-      log("ANABEL: conteúdo remoto carregado.");switchTab(1);status.textContent="URL carregada.";
-    }catch(e){console.error(e);log("ANABEL: a URL não pôde ser lida. O servidor pode bloquear CORS.");status.textContent="Falha na URL.";}
+      const data=await readWebPage(target,{codeFirst:isCodeUrl(target)});
+      const blocks=extractCodeBlocks(data.text,target);
+      if(blocks.length){
+        const block=blocks[0];
+        const lang=guessCodeLanguage(block.code,target,block.language);
+        deliverCode(block.code,lang,target,data.resolved||target);
+        addSource({kind:"SITE",title:target,url:target,note:data.reader?"Página lida pelo Reader; código extraído automaticamente.":"Arquivo-fonte carregado diretamente."});
+        return;
+      }
+      snapshot("antes do carregamento remoto");
+      editor.value=data.text.slice(0,120000);
+      correctedOutput.value="";
+      state.language="auto";setLanguage("auto");switchTab(1);
+      addSource({kind:"SITE",title:target,url:target,note:data.reader?"Conteúdo da página lido pelo Reader.":"Conteúdo remoto carregado diretamente."});
+      log("ANABEL: site lido, mas não encontrei bloco de código explícito.");
+      log("ANABEL: conteúdo colocado no editor para análise.");
+      status.textContent="Site lido.";
+    }catch(e){
+      console.error(e);
+      log("ANABEL: não consegui ler o site. A origem pode exigir autenticação, bloquear automação ou estar indisponível.");
+      status.textContent="Falha ao ler o site.";
+    }
   }
   function exportCode(){
     if(!editor.value.trim()){log("ANABEL: buffer vazio.");return;}
@@ -519,6 +630,36 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     log("ANABEL: pesquisa concluída → "+Math.min(found.length,10)+" referência(s).");
     status.textContent=found.length+" referência(s).";
     return found.slice(0,10);
+  }
+
+  async function researchCode(query){
+    const q=String(query||"").trim();
+    if(!q){log("ANABEL: diga o que o código deve fazer.");return false;}
+    log("ANABEL: modo PESQUISA + CÓDIGO ativado.");
+    const found=await research(q);
+    let candidates=[];
+    for(const item of found.slice(0,5)){
+      try{
+        if(item.kind==="GITHUB")candidates.push(...await readGithubRepoCode(item.url));
+        const page=await readWebPage(item.url,{timeout:14000});
+        extractCodeBlocks(page.text,item.url).forEach((b,idx)=>candidates.push({
+          title:item.title+(idx?" · bloco "+(idx+1):""),
+          url:item.url,
+          code:b.code,
+          language:guessCodeLanguage(b.code,item.url,b.language)
+        }));
+      }catch(e){}
+    }
+    candidates=candidates.filter((x,i,a)=>x.code&&a.findIndex(y=>y.code===x.code)===i);
+    candidates.sort((x,y)=>y.code.length-x.code.length);
+    if(!candidates.length){
+      log("ANABEL: encontrei referências, mas nenhuma continha código extraível.");
+      return false;
+    }
+    const best=candidates[0];
+    deliverCode(best.code,best.language,best.title,best.url);
+    log("ANABEL: código extraído da página pesquisada; não entreguei somente o link.");
+    return true;
   }
 
   function simple(text){
@@ -833,6 +974,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     const select=n.match(/\b(?:ideia|opcao|opção)\s*([1-5])\b/)||n.match(/\b(?:gostei|escolho|quero)\b.*\b([1-5])\b/);
     if(select)return {type:"select",value:Number(select[1])};
     if(/^\/?ideias?(\s|$)/.test(n)||/\b(dica|sugestao|sugestão)\b.*\b(jogo|game)\b/.test(n))return {type:"ideas",value:n.replace(/^\/?ideias?\s*/,"")};
+    if(/\b(?:pesquise|pesquisa|pesquisar|busque|buscar|procure|na internet|na rede)\b/.test(n)&&/\b(?:codigo|código|script|exemplo|implemente|implementacao|implementação)\b/.test(n))return {type:"researchCode",value:text.replace(/\b(?:pesquise|pesquisa|pesquisar|busque|buscar|procure|na internet|na rede)\b/gi,"").replace(/\b(?:me\s+)?(?:de|dê|traga|entregue|entregar)\b/gi,"").replace(/\b(?:codigo|código)\b/gi,"").trim()};
     if(/^\/?(pesquisar|pesquisa|buscar|busca)(\s|$)/.test(n)||/\b(busque|buscar|pesquise|pesquisar|procure|na rede|na internet)\b/.test(n))return {type:"research",value:text.replace(/\b(busque|buscar|pesquise|pesquisa|pesquisar|procure|na rede|na internet)\b/gi,"").trim()};
     if(/\b(o que e|o que é|como funciona|como faco|como faço|como criar|como usar|explique|explica|por que|por quê|qual a melhor maneira)\b/.test(n))return {type:"question",value:text};
     if(/\b(crie|criar|gere|gerar|faça|faca|desenvolva|codifique|entregue|me de|me dê|me entregue)\b.*\b(jogo|game|codigo|código|prototipo|protótipo)\b/.test(n))return {type:"generate"};
@@ -886,6 +1028,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(i.type==="improve"){improvementIdeas();return;}
     if(i.type==="refactor"){refactor();return;}
     if(i.type==="url"){await loadUrl(i.value);return;}
+    if(i.type==="researchCode"){await researchCode(i.value);return;}
     if(i.type==="research"){await research(i.value);return;}
     if(i.type==="question"){await smartAnswer(i.value);return;}
     if(i.type==="ideas"){await ideas(i.value||"jogo estratégia 8-bit");return;}
@@ -918,6 +1061,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     loadUrl,
     handleFiles,
     research,
+    researchCode,
     answer:smartAnswer,
     analyze,
     refactor,
@@ -968,6 +1112,9 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       ["Intent: pergunta",intent("como criar um jogo").type==="question"],
       ["Intent: ideias",intent("Anabel quero uma dica de jogo de estrategia").type==="ideas"],
       ["Intent: pesquisa",intent("/pesquisar Canvas").type==="research"],
+      ["Intent: pesquisa + código",intent("pesquise um exemplo de código de canvas").type==="researchCode"],
+      ["Extrator de código",extractCodeBlocks("```js\\nconst x=1;\\nconsole.log(x);\\n```").length===1],
+      ["Leitor web",typeof readWebPage==="function"],
       ["Intent: Space Invaders",intent("crie space invaders").type==="space"],
       ["Intent: aprovação",intent("sim").type==="confirm"],
       ["Intent: URL",intent("https://example.com/test.html").type==="url"],

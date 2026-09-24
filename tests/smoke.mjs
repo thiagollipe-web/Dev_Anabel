@@ -43,8 +43,12 @@ const routes=[
   }
 ];
 
-for(const [pattern,json] of routes){
-  await page.route(pattern,route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(json)}));
+for(const routeDef of routes){
+  await page.route(routeDef.pattern,route=>route.fulfill({
+    status:200,
+    contentType:routeDef.contentType,
+    body:typeof routeDef.body==="string"?routeDef.body:JSON.stringify(routeDef.body)
+  }));
 }
 
 await page.goto("file://"+file+"?selftest=1");

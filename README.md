@@ -9,11 +9,14 @@ Bot retrô de desenvolvimento e aprendizado, sem LLM.
 - Sandbox isolado em iframe.
 - Controles mobile via Pointer Events e postMessage.
 - Pesquisa online com referências.
+- Agente autônomo: analisa o objetivo, gera até 4 estratégias de busca, consulta GitHub + Stack Overflow + documentação em paralelo, lê candidatos e seleciona código por heurística de relevância, completude, modernidade e segurança.
+- Gatilhos autônomos para erros do Sandbox e arquivos anexados com problemas detectáveis.
 - Respostas técnicas em português simples.
 - Dicas e exemplos.
 - Ideias de jogos e seleção de proposta.
 - Geração de protótipos HTML/Canvas.
 - Refatoração local: var -> let, remoção de console.log() e Arrow Functions simples.
+- Entrega autônoma do código selecionado diretamente no editor, com justificativa técnica e alternativas disponíveis na sessão.
 - Histórico e desfazer.
 - Anexação de arquivos textuais por seleção ou arrastar e soltar.
 - Importação de URLs, incluindo links GitHub blob convertidos para raw.
@@ -39,6 +42,7 @@ A pesquisa usa APIs públicas acessíveis pelo navegador:
 - Wikipedia em português
 - Stack Overflow em português
 - GitHub
+- Documentação técnica (MDN e Python), incluindo busca online e referências oficiais curadas.
 
 CORS continua sendo uma restrição do navegador. A Anabel informa quando uma fonte não permite leitura direta.
 

@@ -112,7 +112,8 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   const canvas=$("#terminal"),ctx=canvas.getContext("2d",{alpha:false});
   const editor=$("#editor"),sandbox=$("#sandbox"),input=$("#input"),send=$("#send");
   const fileInput=$("#file-input"),sources=$("#sources"),status=$("#status");
-  const reviewSummary=$("#review-summary"),reviewList=$("#review-list"),correctedOutput=$("#corrected-output"),copyCorrected=$("#copy-corrected");\n  const autocomplete=$("#autocomplete"),editorMeta=$("#editor-meta");\n  let runtimeKind="",pythonRuntimeReady=false,pendingPythonCode=null,acItems=[],acIndex=0;
+  const reviewSummary=$("#review-summary"),reviewList=$("#review-list"),correctedOutput=$("#corrected-output"),copyCorrected=$("#copy-corrected");
+  const autocomplete=$("#autocomplete"),editorMeta=$("#editor-meta");\n  let runtimeKind="",pythonRuntimeReady=false,pendingPythonCode=null,acItems=[],acIndex=0;
   const state={
     theme:"green",color:"#00ff33",busy:false,queued:false,sandboxUrl:"",language:"auto",
     history:[
@@ -174,7 +175,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     const pyodideCdn="https://cdn.jsdelivr.net/pyodide/v314.0.7/full/";
     const boot=`(async()=>{const state=document.getElementById("state"),out=document.getElementById("out"),NL=String.fromCharCode(10);let pyodide=null;function send(type,data){parent.postMessage(Object.assign({source:"dev-anabel-python",type:type},data||{}),"*")}function emit(kind,value){const s=String(value==null?"":value);if(s)out.textContent+=s;send("output",{kind:kind,text:s})}function loadScript(src){return new Promise(function(resolve,reject){const s=document.createElement("script");s.src=src;s.onload=resolve;s.onerror=reject;document.head.appendChild(s)})}try{await loadScript("${pyodideCdn}pyodide.js");pyodide=await loadPyodide({indexURL:"${pyodideCdn}"});pyodide.setStdout({batched:function(s){emit("stdout",s)}});pyodide.setStderr({batched:function(s){emit("stderr",s)}});state.textContent="PYTHON: ambiente pronto";send("ready",{version:String(pyodide.runPython("import sys;sys.version"))})}catch(err){state.textContent="PYTHON: falha ao inicializar";send("error",{error:String(err)})}window.addEventListener("message",async function(e){const d=e.data||{};if(d.source!=="dev-anabel-python"||!pyodide||d.action!=="run")return;state.textContent="PYTHON: executando…";try{await pyodide.loadPackagesFromImports(String(d.code||""));const result=await pyodide.runPythonAsync(String(d.code||""));if(result!==undefined&&result!==null)emit("result",String(result)+NL);send("done",{ok:true})}catch(err){emit("stderr",String(err)+NL);send("done",{ok:false,error:String(err)})}state.textContent="PYTHON: pronto"})})()`;
     const safeBoot=boot;
-    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Python Runtime</title><style>body{margin:0;background:#000;color:#00ff33;font:12px monospace;padding:10px}#state{border:1px solid #333;padding:7px;margin-bottom:8px}pre{white-space:pre-wrap;margin:0;border:1px solid #333;background:#050505;padding:10px;min-height:220px;overflow:auto}</style></head><body><div id="state">PYTHON: carregando…</div><pre id="out"></pre><script>'+safeBoot+'<\\/script></body></html>';
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Python Runtime</title><style>body{margin:0;background:#000;color:#00ff33;font:12px monospace;padding:10px}#state{border:1px solid #333;padding:7px;margin-bottom:8px}pre{white-space:pre-wrap;margin:0;border:1px solid #333;background:#050505;padding:10px;min-height:220px;overflow:auto}</style></head><body><div id="state">PYTHON: carregando…</div><pre id="out"></pre><script>'+safeBoot+'<\/script></body></html>';
   }
   function postPython(action,code){
     if(!sandbox.contentWindow){log("ANABEL: ambiente Python ainda não está disponível.");return false;}
@@ -346,6 +347,109 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     sorted:"sorted(iterable, *, key=None, reverse=False)",
     sum:"sum(iterable, /, start=0)"
   };
+
+  function currentPythonContext(){
+    const pos=editor.selectionStart||0,before=editor.value.slice(0,pos);
+    const lineStart=before.lastIndexOf("\n")+1,line=before.slice(lineStart);
+    const dot=line.match(/([A-Za-z_]\w*)\.([A-Za-z_]\w*)?$/);
+    const token=(line.match(/([A-Za-z_]\w*)$/)||[])[1]||"";
+    const importCtx=/(?:^|[;\s])(from|import)\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)?$/.exec(line);
+    return {pos,before,line,lineStart,dot,token,importCtx};
+  }
+
+  function localPythonSymbols(){
+    const code=editor.value,out=new Set();
+    for(const re of [/\bdef\s+([A-Za-z_]\w*)/g,/\bclass\s+([A-Za-z_]\w*)/g,/\b([A-Za-z_]\w*)\s*=\s*(?![=])/g,/\bas\s+([A-Za-z_]\w*)/g]){
+      let m;while((m=re.exec(code)))out.add(m[1]);
+    }
+    return [...out];
+  }
+
+  function pythonSuggestions(){
+    const ctx=currentPythonContext();let prefix=ctx.token,list=[];
+    if(ctx.dot){
+      prefix=ctx.dot[2]||"";
+      const methods=PY_METHODS[ctx.dot[1]]||PY_BUILTINS;
+      list=methods.map(x=>({label:x,kind:PY_METHODS[ctx.dot[1]]?"método":"Python"}));
+    }else if(ctx.importCtx){
+      prefix=ctx.importCtx[2]||"";
+      list=PY_MODULES.map(x=>({label:x,kind:"módulo"}));
+    }else{
+      list=PY_KEYWORDS.map(x=>({label:x,kind:"palavra"}))
+        .concat(PY_BUILTINS.map(x=>({label:x,kind:"builtin"})))
+        .concat(PY_MODULES.map(x=>({label:x,kind:"módulo"})))
+        .concat(localPythonSymbols().map(x=>({label:x,kind:"seu código"})));
+    }
+    const p=norm(prefix);
+    return [...new Map(list.filter(x=>!p||norm(x.label).startsWith(p)).map(x=>[x.label,x])).values()].slice(0,14);
+  }
+
+  function placeAutocomplete(){
+    const ctx=currentPythonContext();
+    const lineHeight=parseFloat(getComputedStyle(editor).lineHeight)||17;
+    const lineNo=(ctx.before.match(/\n/g)||[]).length;
+    const col=ctx.before.length-ctx.lineStart;
+    let top=10+lineNo*lineHeight-editor.scrollTop+lineHeight+2;
+    let left=10+Math.min(col,48)*7.2-editor.scrollLeft;
+    top=Math.max(5,Math.min(editor.clientHeight-225,top));
+    left=Math.max(5,Math.min(editor.clientWidth-395,left));
+    autocomplete.style.top=top+"px";autocomplete.style.left=left+"px";
+  }
+
+  function renderAutocomplete(force=false){
+    if(detectLanguage(editor.value)!=="python"){autocomplete.classList.remove("show");return;}
+    const items=pythonSuggestions();
+    if(!items.length&&!force){autocomplete.classList.remove("show");return;}
+    acItems=items;acIndex=Math.min(acIndex,Math.max(0,items.length-1));
+    autocomplete.innerHTML=items.length?items.map((x,i)=>'<div class="ac-item'+(i===acIndex?" selected":"")+'" role="option" aria-selected="'+(i===acIndex?"true":"false")+'" data-ac-index="'+i+'"><span>'+esc(x.label)+'</span><span class="ac-kind">'+esc(x.kind)+'</span></div>').join(""):'<div class="ac-empty">Nenhuma sugestão.</div>';
+    autocomplete.classList.add("show");placeAutocomplete();
+  }
+
+  function acceptAutocomplete(index){
+    if(!acItems.length)return false;
+    const item=acItems[Math.max(0,Math.min(acItems.length-1,index??acIndex))];
+    const ctx=currentPythonContext();
+    const tokenLen=ctx.token.length;
+    let start=ctx.pos-tokenLen;
+    if(ctx.dot)start=ctx.lineStart+ctx.line.lastIndexOf(".")+1;
+    editor.setRangeText(item.label,start,ctx.pos,"end");
+    setLanguage("python");autocomplete.classList.remove("show");
+    status.textContent=PY_SIGNATURES[item.label]||"Sugestão aplicada: "+item.label;
+    return true;
+  }
+
+  function pythonIndent(e){
+    if(detectLanguage(editor.value)!=="python")return false;
+    if(e.key==="Tab"){
+      e.preventDefault();
+      if(autocomplete.classList.contains("show")&&acItems.length)return acceptAutocomplete();
+      const a=editor.selectionStart,b=editor.selectionEnd,selected=editor.value.slice(a,b);
+      const currentLine=editor.value.slice(0,a).split("\n").pop()||"";
+      const indent=(currentLine.match(/^\s*/)||[""])[0];
+      if(a!==b)editor.setRangeText(selected.split("\n").map(x=>indent+"    "+x).join("\n"),a,b,"select");
+      else editor.setRangeText("    ",a,b,"end");
+      renderAutocomplete(false);return true;
+    }
+    if(e.key==="Enter"){
+      if(autocomplete.classList.contains("show")&&acItems.length){e.preventDefault();return acceptAutocomplete();}
+      e.preventDefault();
+      const pos=editor.selectionStart,before=editor.value.slice(0,pos),line=before.slice(before.lastIndexOf("\n")+1);
+      const base=(line.match(/^\s*/)||[""])[0];
+      const extra=/:\s*$/.test(line)?"    ":"";
+      let text="\n"+base+extra;
+      editor.setRangeText(text,pos,editor.selectionEnd,"end");
+      const newLine=editor.value.slice(0,editor.selectionStart).split("\n").pop()||"";
+      if(/^\s*(elif|else|except|finally)\b/.test(newLine)&&/^(\s*)(elif|else|except|finally)\b/.test(newLine)){
+        const currentIndent=(newLine.match(/^\s*/)||[""])[0];
+        if(currentIndent.length>=4){
+          const p=editor.selectionStart-currentIndent.length;
+          editor.setRangeText("",p,p+4,"end");
+        }
+      }
+      renderAutocomplete(false);return true;
+    }
+    return false;
+  }
 
   const IDEAS=[
     {title:"Reino dos 16 Turnos",pitch:"Transforme uma vila em um reino em 16 turnos; economia, população, defesa e expansão disputam o mesmo orçamento.",mechanics:["recursos","território","defesa","eventos","16 turnos"]},

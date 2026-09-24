@@ -89,6 +89,17 @@ const ref=await page.evaluate(()=>{
 if(ref.result.varCount!==1||ref.result.logCount!==1||ref.result.arrowCount!==1) throw new Error("Contagem da refatoração inválida");
 if(!ref.value.includes("let x=1;")||ref.value.includes("console.log")||!ref.value.includes("const f = (a) => a+1;")||!ref.value.includes('const txt="var y"')) throw new Error("Refatoração produziu resultado incorreto");
 
+await page.evaluate(()=>window.DevAnabel.undo());
+const undone=await page.evaluate(()=>document.querySelector("#editor").value);
+if(undone!=='var x=1;\nconsole.log(x);\nconst f = function(a) { return a+1; };\nconst txt="var y";') throw new Error("Undo falhou");
+
+await page.evaluate(()=>window.DevAnabel.analyze());
+await page.locator("#input").fill("sim");
+await page.locator("#send").click();
+await page.waitForTimeout(150);
+const approval=await page.evaluate(()=>({pending:window.DevAnabel.state.pendingAction,value:document.querySelector("#editor").value}));
+if(approval.pending||approval.value.includes("var x=1;")||approval.value.includes("console.log")) throw new Error("Aprovação de correção falhou");
+
 const review=await page.evaluate(()=>({
   summary:document.querySelector("#review-summary")?.textContent||"",
   suggestions:document.querySelectorAll("#review-list li").length,
@@ -128,17 +139,6 @@ const improved=await page.evaluate(()=>({
 if(!improved.suggestions.includes("response.ok")||!improved.suggestions.includes("requestAnimationFrame")||improved.output!=='const ctx=canvas.getContext("2d");\nfetch("/api");') {
   throw new Error("Comando /melhorar não gerou sugestões contextuais.");
 }
-
-await page.evaluate(()=>window.DevAnabel.undo());
-const undone=await page.evaluate(()=>document.querySelector("#editor").value);
-if(undone!=='var x=1;\nconsole.log(x);\nconst f = function(a) { return a+1; };\nconst txt="var y";') throw new Error("Undo falhou");
-
-await page.evaluate(()=>window.DevAnabel.analyze());
-await page.locator("#input").fill("sim");
-await page.locator("#send").click();
-await page.waitForTimeout(150);
-const approval=await page.evaluate(()=>({pending:window.DevAnabel.state.pendingAction,value:document.querySelector("#editor").value}));
-if(approval.pending||approval.value.includes("var x=1;")||approval.value.includes("console.log")) throw new Error("Aprovação de correção falhou");
 
 await page.evaluate(()=>window.DevAnabel.ideas("jogo estratégia 8-bit"));
 await page.waitForTimeout(100);

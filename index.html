@@ -273,7 +273,13 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(runtimeKind==="python")status.textContent="Ambiente Python carregado; aguardando CPython…";
   });
   window.addEventListener("message",e=>{
-    const d=e.data;if(!d||d.source!=="dev-anabel-python")return;
+    const d=e.data;if(!d)return;
+    if(d.source==="dev-anabel-runtime"){
+      if(d.type==="log")log("RUNTIME: "+String(d.text||""));
+      if(d.type==="error"){status.textContent="Erro no código executado.";log("ERRO DE EXECUÇÃO: "+String(d.error||"falha desconhecida"));}
+      return;
+    }
+    if(d.source!=="dev-anabel-python")return;
     if(d.type==="ready"){
       pythonRuntimeReady=true;status.textContent="Python pronto · estado persistente";
       log("ANABEL: ambiente Python conectado. "+String(d.version||""));
@@ -966,7 +972,10 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       ["var→let",refactorVar("var x=1;").code.includes("let x")],
       ["console.log",removeLogs("console.log(1);\nlet x=1;").count===1],
       ["Arrow",arrows("const f=function(a){return a+1;};").count===1],
-      ["Sandbox",sandbox.getAttribute("sandbox")==="allow-scripts"],["Python detector",detectLanguage("def soma(a,b):\n    return a+b")==="python"],["Python autocomplete",pythonSuggestions().length>0],
+      ["Sandbox",sandbox.getAttribute("sandbox")==="allow-scripts"],
+      ["Python detector",detectLanguage("def soma(a,b):\n    return a+b")==="python"],
+      ["Python autocomplete",pythonSuggestions().length>0],
+      ["Web runner",typeof webRuntimeHTML==="function"],
       ["Mobile tabs",qsa(".tab").length===3],
       ["Mobile pad",qsa(".pad").length===3],
       ["Fontes",typeof addSource==="function"]

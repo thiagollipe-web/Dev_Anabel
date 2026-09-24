@@ -7,6 +7,7 @@ const html=readFileSync(file,"utf8");
 
 if(!html.includes("window.DevAnabel")) throw new Error("DevAnabel global ausente");
 if(!html.includes('sandbox="allow-scripts"')) throw new Error("Sandbox ausente");
+if(!html.includes('id="review"')||!html.includes('id="corrected-output"')) throw new Error("Painel de revisão ausente");
 if(/openai|anthropic|gemini|ollama|qwen|gemma/i.test(html)) throw new Error("Dependência de LLM detectada");
 
 const browser=await chromium.launch({headless:true,channel:"chrome"});
@@ -73,9 +74,11 @@ const intent=await page.evaluate(()=>[
   window.DevAnabel.intent("https://example.com/x.html").type,
   window.DevAnabel.intent("me dê o código").type,
   window.DevAnabel.intent("crie space invaders").type,
-  window.DevAnabel.intent("sim").type
+  window.DevAnabel.intent("sim").type,
+  window.DevAnabel.intent("corrija meu código").type,
+  window.DevAnabel.intent("me dê ideias de melhoria").type
 ]);
-if(JSON.stringify(intent)!==JSON.stringify(["analyze","question","ideas","url","generate","space","confirm"])) throw new Error("Roteamento de intenção inválido: "+JSON.stringify(intent));
+if(JSON.stringify(intent)!==JSON.stringify(["analyze","question","ideas","url","generate","space","confirm","fix","improve"])) throw new Error("Roteamento de intenção inválido: "+JSON.stringify(intent));
 
 const ref=await page.evaluate(()=>{
   const e=document.querySelector("#editor");
@@ -85,6 +88,46 @@ const ref=await page.evaluate(()=>{
 });
 if(ref.result.varCount!==1||ref.result.logCount!==1||ref.result.arrowCount!==1) throw new Error("Contagem da refatoração inválida");
 if(!ref.value.includes("let x=1;")||ref.value.includes("console.log")||!ref.value.includes("const f = (a) => a+1;")||!ref.value.includes('const txt="var y"')) throw new Error("Refatoração produziu resultado incorreto");
+
+const review=await page.evaluate(()=>({
+  summary:document.querySelector("#review-summary")?.textContent||"",
+  suggestions:document.querySelectorAll("#review-list li").length,
+  corrected:document.querySelector("#corrected-output")?.value||""
+}));
+if(review.suggestions<1||!review.corrected.includes("let x=1;")||review.corrected.includes("console.log")) {
+  throw new Error("Painel de revisão não recebeu sugestões/código corrigido.");
+}
+
+await page.evaluate(()=>{
+  const e=document.querySelector("#editor");
+  e.value='var vida=3;\nconsole.log(vida);';
+  document.querySelector("#input").value="/corrigir";
+  document.querySelector("#send").click();
+});
+await page.waitForTimeout(150);
+const fixed=await page.evaluate(()=>({
+  editor:document.querySelector("#editor").value,
+  output:document.querySelector("#corrected-output").value,
+  suggestions:document.querySelectorAll("#review-list li").length
+}));
+if(fixed.editor!=="let vida=3;"||fixed.output!=="let vida=3;"||fixed.suggestions<1) {
+  throw new Error("Comando /corrigir não entregou código corrigido e melhorias.");
+}
+
+await page.evaluate(()=>{
+  const e=document.querySelector("#editor");
+  e.value='const ctx=canvas.getContext("2d");\nfetch("/api");';
+  document.querySelector("#input").value="/melhorar";
+  document.querySelector("#send").click();
+});
+await page.waitForTimeout(150);
+const improved=await page.evaluate(()=>({
+  suggestions:[...document.querySelectorAll("#review-list li")].map(x=>x.textContent).join(" | "),
+  output:document.querySelector("#corrected-output").value
+}));
+if(!improved.suggestions.includes("response.ok")||!improved.suggestions.includes("requestAnimationFrame")||improved.output!=='const ctx=canvas.getContext("2d");\nfetch("/api");') {
+  throw new Error("Comando /melhorar não gerou sugestões contextuais.");
+}
 
 await page.evaluate(()=>window.DevAnabel.undo());
 const undone=await page.evaluate(()=>document.querySelector("#editor").value);

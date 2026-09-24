@@ -236,7 +236,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     if(runtimeKind!=="python"){
       revokeSandbox();
       runtimeKind="python";pythonRuntimeReady=false;pendingPythonCode=source;
-      state.sandboxUrl=URL.createObjectURL(new Blob([pythonRuntimeHTML()],{type:"text/html;charset=utf-8"}));
+      state.sandboxUrl=URL.createObjectURL(new Blob([pythonRuntimeHTML(new URL("./pyodide/",location.href).href)],{type:"text/html;charset=utf-8"}));
       sandbox.src=state.sandboxUrl;
       log("ANABEL: conectando ao ambiente Python (Pyodide/CPython WebAssembly)…");
       return true;
@@ -438,14 +438,18 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     a.href=url;a.download=(state.language==="python"||detectLanguage(editor.value)==="python")?"dev_anabel.py":"dev_anabel_export.html";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),0);log("ANABEL: exportação concluída.");
   }
   Object.assign(window,{switchTab,changeTheme:theme,exportCode,handleFileAttach:i=>handleFiles(i?.files||[]),DevAnabel:{state,switchTab,theme,run,undo,loadUrl,handleFiles}});
-  window.addEventListener("resize",drawLater,{passive:true});
-  window.addEventListener("orientationchange",drawLater,{passive:true});
+  function debouncedResize(){
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(()=>{resizeTimer=null;draw();},200);
+  }
+  window.addEventListener("resize",debouncedResize,{passive:true});
+  window.addEventListener("orientationchange",debouncedResize,{passive:true});
   sandbox.addEventListener("load",()=>{
     const t=sandbox.contentDocument?.getElementById("title");if(t)t.style.color=state.color;
     if(runtimeKind==="python")status.textContent="Ambiente Python carregado; aguardando CPython…";
   });
   window.addEventListener("message",e=>{
-    const d=e.data;if(!d)return;
+    const d=e.data;if(!d||e.source!==sandbox.contentWindow)return;
     if(d.source==="dev-anabel-runtime"){
       if(d.type==="log")log("RUNTIME: "+String(d.text||""));
       if(d.type==="error"){
@@ -1622,7 +1626,8 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     autoFixSystem
   };
 
-  editor.addEventListener("input",()=>{if(state.language==="auto")setLanguage("auto");else setLanguage(state.language);if(detectLanguage(editor.value)==="python")renderAutocomplete(false);else autocomplete.classList.remove("show");});
+  editor.addEventListener("input",()=>{if(state.language==="auto")setLanguage("auto");else setLanguage(state.language);updateLineNumbers();saveSessionDebounced();if(detectLanguage(editor.value)==="python")renderAutocomplete(false);else autocomplete.classList.remove("show");});
+  editor.addEventListener("scroll",()=>{lineNumbers.scrollTop=editor.scrollTop;if(autocomplete.classList.contains("show"))placeAutocomplete();},{passive:true});
   editor.addEventListener("keydown",e=>{
     if(detectLanguage(editor.value)==="python"){
       if(e.key==="Escape"&&autocomplete.classList.contains("show")){autocomplete.classList.remove("show");return;}
@@ -1638,6 +1643,8 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   autocomplete.addEventListener("mousedown",e=>{const el=e.target.closest("[data-ac-index]");if(!el)return;e.preventDefault();acceptAutocomplete(Number(el.dataset.acIndex));});
   document.addEventListener("click",e=>{if(e.target!==editor&&!autocomplete.contains(e.target))autocomplete.classList.remove("show");});
   setLanguage("auto");
+  updateLineNumbers();
+  restoreSession();
   send.addEventListener("click",sendCommand);
   input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();sendCommand();}});
 

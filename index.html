@@ -203,10 +203,10 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     const isModule=language==="javascript" && /^\\s*(?:import|export)\\b/m.test(source);
     const bootstrap='<script>(()=>{addEventListener("error",e=>parent.postMessage({source:"dev-anabel-runtime",type:"error",error:String(e.message||"erro no runtime")},"*"));addEventListener("unhandledrejection",e=>parent.postMessage({source:"dev-anabel-runtime",type:"error",error:String(e.reason||"Promise rejeitada")},"*"));const oldLog=console.log.bind(console);console.log=(...a)=>{oldLog(...a);parent.postMessage({source:"dev-anabel-runtime",type:"log",text:a.map(String).join(" ")},"*")};})()<\\/script>';
     if(language==="css"){
-      return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dev_Anabel Live</title>'+bootstrap+'<style>'+source.replace(/<\\/style/gi,"<\\\\/style")+'</style></head><body><div id="app"></div></body></html>';
+      return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dev_Anabel Live</title>'+bootstrap+'<style>'+source.replaceAll("</style","<\\/style")+'</style></head><body><div id="app"></div></body></html>';
     }
     const scriptTag=isModule?'<script type="module">':'<script>';
-    const safe=source.replace(/<\\/script/gi,"<\\\\/script");
+    const safe=source.replaceAll("</script","<\\/script");
     return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dev_Anabel Live</title>'+bootstrap+'</head><body><div id="app"></div>'+scriptTag+safe+'</script></body></html>';
   }
   function run(code){

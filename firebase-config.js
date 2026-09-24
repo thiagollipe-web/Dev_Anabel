@@ -12,7 +12,7 @@ window.ANABEL_FIREBASE_CONFIG = {
   measurementId: "G-W1MK89H1W"
 };
 
-/* Será preenchido depois de registrar o App Check no Firebase. */
+/* Site Key pública do App Check para o app Web Dev_Anabel. */
 window.ANABEL_FIREBASE_APPCHECK_SITE_KEY = "6Lf3g80tAAAAAOcRdi0Lwr3ml5ZZIbbrysfkZSFf";
 
 window.ANABEL_FIREBASE_MODEL = "gemini-3.7-flash";

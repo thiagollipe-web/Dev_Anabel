@@ -34,12 +34,13 @@ const base=await page.evaluate(()=>({
   selftest:window.DevAnabel.state.history.find(x=>x.startsWith("SELFTEST:")),
   dom:!!document.querySelector("#editor"),
   mobileTabs:document.querySelectorAll(".tab").length,
+  mobilePad:document.querySelectorAll(".pad").length,
   sandbox:document.querySelector("#sandbox").getAttribute("sandbox"),
   noLlm:![...document.scripts].some(s=>/openai|anthropic|gemini|ollama|qwen|gemma/i.test(s.textContent))
 }));
 
-if(base.selftest!=="SELFTEST: 16/16 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest);
-if(base.mobileTabs!==3||base.sandbox!=="allow-scripts"||!base.dom||!base.noLlm) throw new Error("Estrutura básica inválida");
+if(base.selftest!=="SELFTEST: 17/17 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest);
+if(base.mobileTabs!==3||base.mobilePad!==3||base.sandbox!=="allow-scripts"||!base.dom||!base.noLlm) throw new Error("Estrutura básica inválida");
 
 const intent=await page.evaluate(()=>[
   window.DevAnabel.intent("analise meu codigo").type,

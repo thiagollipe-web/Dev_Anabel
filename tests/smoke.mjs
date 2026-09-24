@@ -62,6 +62,7 @@ await page.waitForTimeout(300);
 
 const base=await page.evaluate(()=>({
   selftest:window.DevAnabel.state.history.find(x=>x.startsWith("SELFTEST:")),
+  selftestFailures:window.DevAnabel.state.history.filter(x=>x.startsWith("SELFTEST FALHA:")),
   dom:!!document.querySelector("#editor"),
   mobileTabs:document.querySelectorAll(".tab").length,
   mobilePad:document.querySelectorAll(".pad").length,
@@ -69,7 +70,7 @@ const base=await page.evaluate(()=>({
   noLlm:![...document.scripts].some(s=>/openai|anthropic|gemini|ollama|qwen|gemma/i.test(s.textContent))
 }));
 
-if(base.selftest!=="SELFTEST: 23/23 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest);
+if(base.selftest!=="SELFTEST: 23/23 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest+" | "+base.selftestFailures.join(" | "));
 if(base.mobileTabs!==3||base.mobilePad!==3||base.sandbox!=="allow-scripts"||!base.dom||!base.noLlm) throw new Error("Estrutura básica inválida");
 
 const runtimeTest=await page.evaluate(()=>new Promise(resolve=>{

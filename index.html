@@ -1127,6 +1127,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       symptom:code=>/\bawait\b/.test(mask(code))&&!/\btry\s*\{/.test(mask(code)),
       fix:code=>{
         const src=String(code||"");
+        if(!/\basync\b/.test(mask(src)))return src;
         const re=/^(\s*)(await\s+[^;\n]+;?)\s*$/gm;
         let count=0;
         const fixed=src.replace(re,(all,indent,statement)=>{

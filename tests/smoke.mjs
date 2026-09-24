@@ -70,7 +70,7 @@ const base=await page.evaluate(()=>({
   noLlm:![...document.scripts].some(s=>/openai|anthropic|gemini|ollama|qwen|gemma/i.test(s.textContent))
 }));
 
-if(base.selftest!=="SELFTEST: 26/26 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest+" | "+base.selftestFailures.join(" | "));
+if(base.selftest!=="SELFTEST: 26/26 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest+" | "+base.selftestFailures.join(" | ")+" | browserErrors: "+errors.join(" || "));
 if(base.mobileTabs!==3||base.mobilePad!==3||base.sandbox!=="allow-scripts"||!base.dom||!base.noLlm) throw new Error("Estrutura básica inválida");
 
 const runtimeTest=await page.evaluate(()=>new Promise(resolve=>{

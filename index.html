@@ -207,7 +207,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     }
     const module=/^\\s*(?:import|export)\\b/m.test(source);
     const scriptTag=module?'<script type="module">':'<script>';
-    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+bootstrap+'</head><body><div id="app"></div>'+scriptTag+safeSource+'</script></body></html>';
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+bootstrap+'</head><body><div id="app"></div>'+scriptTag+safeSource+'<\\/script></body></html>';
   }
   function run(code){
     if(!String(code||"").trim()){log("ANABEL: não há código para executar.");return false;}

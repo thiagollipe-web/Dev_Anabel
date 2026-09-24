@@ -61,3 +61,14 @@ A tradução de pequenos trechos usa uma tentativa de serviço externo e possui 
 A URL `?selftest=1` executa verificações internas.
 
 O repositório também possui testes automatizados via GitHub Actions.
+## Integração Gemini + Groq
+
+O frontend continua estático no GitHub Pages. As chamadas de IA passam por um gateway serverless em `api/gemini.js`, executado no Vercel.
+
+Fluxo: GitHub Pages → Vercel Functions → Gemini → fallback Groq → fallback para o motor local da Anabel.
+
+As variáveis de ambiente usadas pelo gateway são `GEMINI_API_KEY` e `GROQ_API_KEY`. Nenhuma chave deve ser colocada no `index.html` ou enviada ao navegador.
+
+O endpoint padrão do frontend é `https://dev-anabel.vercel.app/api/gemini`. Também é possível sobrescrevê-lo no navegador com `localStorage.setItem("anabel-api-endpoint", "https://SEU-PROJETO.vercel.app/api/gemini")`.
+
+O Gemini usa `gemini-2.5-flash`; o fallback Groq usa `openai/gpt-oss-20b`.

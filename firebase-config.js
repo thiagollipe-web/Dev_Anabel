@@ -13,6 +13,6 @@ window.ANABEL_FIREBASE_CONFIG = {
 };
 
 /* Será preenchido depois de registrar o App Check no Firebase. */
-window.ANABEL_FIREBASE_APPCHECK_SITE_KEY = "";
+window.ANABEL_FIREBASE_APPCHECK_SITE_KEY = "6Lf3g80tAAAAAOcRdi0Lwr3ml5ZZIbbrysfkZSFf";
 
 window.ANABEL_FIREBASE_MODEL = "gemini-3.7-flash";

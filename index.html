@@ -1113,7 +1113,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       ["Intent: ideias",intent("Anabel quero uma dica de jogo de estrategia").type==="ideas"],
       ["Intent: pesquisa",intent("/pesquisar Canvas").type==="research"],
       ["Intent: pesquisa + código",intent("pesquise um exemplo de código de canvas").type==="researchCode"],
-      ["Extrator de código",extractCodeBlocks("```js\\nconst x=1;\\nconsole.log(x);\\n```").length===1],
+      ["Extrator de código",extractCodeBlocks("```js\nconst x=1;\nconsole.log(x);\n```").length===1],
       ["Leitor web",typeof readWebPage==="function"],
       ["Intent: Space Invaders",intent("crie space invaders").type==="space"],
       ["Intent: aprovação",intent("sim").type==="confirm"],

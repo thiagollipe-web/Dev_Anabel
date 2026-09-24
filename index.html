@@ -771,8 +771,8 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     return false;
   }
 
-  function smartAnswer(query){
-    if(smartPythonAnswer(query))return;
+  async function smartAnswer(query){
+    if(await smartPythonAnswer(query))return;
     const item=known(query);
     if(item){
       log("ANABEL: "+item.title);

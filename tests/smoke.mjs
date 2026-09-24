@@ -38,6 +38,11 @@ const routes=[
     body:"const remoto = 7;"
   },
   {
+    pattern:"https://r.jina.ai/**",
+    contentType:"text/plain",
+    body:"# Tutorial\n\n```javascript\nconst resultado = 99;\nconsole.log(resultado);\n```"
+  },
+  {
     pattern:"https://api.mymemory.translated.net/**",
     contentType:"application/json",
     body:{responseData:{translatedText:"Uma função é um bloco reutilizável de código."}}
@@ -64,7 +69,7 @@ const base=await page.evaluate(()=>({
   noLlm:![...document.scripts].some(s=>/openai|anthropic|gemini|ollama|qwen|gemma/i.test(s.textContent))
 }));
 
-if(base.selftest!=="SELFTEST: 20/20 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest);
+if(base.selftest!=="SELFTEST: 23/23 verificações aprovadas.") throw new Error("Selftest falhou: "+base.selftest);
 if(base.mobileTabs!==3||base.mobilePad!==3||base.sandbox!=="allow-scripts"||!base.dom||!base.noLlm) throw new Error("Estrutura básica inválida");
 
 const runtimeTest=await page.evaluate(()=>new Promise(resolve=>{
@@ -198,6 +203,14 @@ await page.evaluate(()=>window.DevAnabel.loadUrl("https://github.com/test/repo/b
 await page.waitForTimeout(100);
 const remote=await page.evaluate(()=>document.querySelector("#editor").value);
 if(remote!=="const remoto = 7;") throw new Error("URL mock não retornou o conteúdo esperado");
+
+await page.evaluate(()=>window.DevAnabel.loadUrl("https://example.com/tutorial"));
+await page.waitForTimeout(100);
+const extracted=await page.evaluate(()=>({editor:document.querySelector("#editor").value,output:document.querySelector("#corrected-output").value,language:window.DevAnabel.state.language}));
+if(extracted.editor!=="const resultado = 99;\\nconsole.log(resultado);"||extracted.output!==extracted.editor||extracted.language!=="javascript") throw new Error("Leitura do site não extraiu e entregou o código");
+
+const researchCode=await page.evaluate(()=>window.DevAnabel.intent("pesquise um exemplo de código de canvas").type);
+if(researchCode!=="researchCode") throw new Error("Modo pesquisa + código não foi reconhecido");
 
 await page.evaluate(()=>window.DevAnabel.answer("explique um assunto totalmente desconhecido"));
 await page.waitForTimeout(100);

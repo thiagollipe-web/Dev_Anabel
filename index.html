@@ -1528,9 +1528,10 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
 
     // 1) Anabel no servidor próprio: Gemma/SLMs via API.
     try{
-      status.textContent="IA: conectando ao servidor Anabel…";
+      status.textContent="IA: processando no servidor Anabel…";
       const controller=new AbortController();
-      const timer=setTimeout(()=>controller.abort(),30000);
+      // Prompts longos e código podem levar mais tempo no Gemma Cloud.
+      const timer=setTimeout(()=>controller.abort(),120000);
       let response;
       try{
         response=await fetch(ANABEL_API_ENDPOINT,{
@@ -1550,6 +1551,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     }catch(error){
       const detail=error instanceof Error ? error.message : String(error || "erro desconhecido");
       log("ANABEL: servidor próprio falhou: "+detail);
+      status.textContent="Falha no servidor Anabel; tentando motor de reserva…";
     }
 
     // 2) Firebase Gemini permanece como fallback.

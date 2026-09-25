@@ -6,414 +6,186 @@
 <meta name="theme-color" content="#050505">
 <title>Anabel — Assistente de Desenvolvimento</title>
 <style>
-:root{
-  --bg:#f5f1eb;
-  --surface:#fffdf9;
-  --surface-2:#f0ece6;
-  --surface-3:#e8e2da;
-  --border:#ddd6cd;
-  --text:#242321;
-  --muted:#77716a;
-  --accent:#2f7d4a;
-  --accent-soft:#e7f1e9;
-  --accent-strong:#24633a;
-  --danger:#b84c4c;
-  --shadow:0 10px 30px rgba(42,35,28,.07);
-}
-[data-theme="amber"]{
-  --accent:#b7791f;
-  --accent-soft:#fbf0da;
-  --accent-strong:#8a5d15;
-}
+:root{--bg:#faf9f7;--sidebar:#f3f2ee;--surface:#fff;--surface-soft:#f7f6f3;--border:#e5e2dc;--text:#262421;--muted:#77736d;--accent:#2f7d4a;--accent-soft:#e7f1e9;--accent-strong:#23633a;--shadow:0 2px 12px rgba(38,36,33,.05)}
 *{box-sizing:border-box}
-html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
-body{
-  min-height:100vh;
-  padding:0;
-  display:flex;
-  flex-direction:column;
-  align-items:stretch;
-  gap:0;
-  overscroll-behavior:contain;
-  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-}
+html,body{margin:0;min-height:100%;height:100%;background:var(--bg);color:var(--text)}
+body{display:flex;overflow:hidden;overscroll-behavior:contain;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 button,input,textarea,select{font:inherit}
 button{transition:.15s ease}
 button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-header{
-  width:100%;
-  max-width:none;
-  min-height:68px;
-  padding:12px 24px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:16px;
-  background:rgba(255,253,249,.92);
-  border-bottom:1px solid var(--border);
-  position:sticky;
-  top:0;
-  z-index:50;
-  backdrop-filter:blur(14px);
-}
-.brand{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  min-width:0;
-}
-.brand-logo{
-  width:42px;
-  height:42px;
-  border-radius:12px;
-  object-fit:cover;
-  box-shadow:0 3px 12px rgba(0,0,0,.08);
-}
-.brand-copy{display:flex;flex-direction:column;min-width:0}
-.brand-copy strong{font-size:17px;letter-spacing:.02em;color:var(--text)}
-.brand-copy span{font-size:11px;color:var(--muted)}
-.toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
-.tool,.theme select{
-  background:var(--surface);
-  color:var(--text);
-  border:1px solid var(--border);
-  border-radius:10px;
-  padding:8px 11px;
-  cursor:pointer;
-}
-.tool:hover,.theme select:hover{background:var(--surface-2);border-color:#cfc7bd}
-.theme{display:flex;gap:5px;align-items:center;color:var(--muted);font-size:11px}
-.model-pill{
-  display:inline-flex;
-  align-items:center;
-  gap:7px;
-  border:1px solid var(--border);
-  background:var(--surface-2);
-  color:var(--muted);
-  border-radius:999px;
-  padding:7px 11px;
-  font-size:11px;
-}
-.model-pill b{color:var(--accent-strong);font-weight:700}
-.status-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-#file-input{display:none}
-
-.mobile-tabs{
-  display:none;
-  width:100%;
-  padding:8px 10px 0;
-  gap:6px;
-}
-.tab{
-  flex:1;
-  background:transparent;
-  color:var(--muted);
-  border:1px solid transparent;
-  border-radius:10px 10px 0 0;
-  padding:10px;
-  cursor:pointer;
-}
-.tab.active{color:var(--text);background:var(--surface);border-color:var(--border);border-bottom-color:var(--surface);font-weight:650}
-
-#workspace{
-  width:min(1120px,calc(100% - 40px));
-  max-width:1120px;
-  margin:22px auto 12px;
-  min-height:560px;
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  grid-template-rows:minmax(390px,55vh) 260px;
-  grid-template-areas:
-    "chat chat"
-    "code preview";
-  gap:14px;
-}
-.panel{
-  min-width:0;
-  min-height:0;
-  display:flex;
-  flex-direction:column;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:18px;
-  overflow:hidden;
-  box-shadow:var(--shadow);
-}
-#p0{grid-area:chat}
-#p1{grid-area:code}
-#p2{grid-area:preview}
-.label{
-  min-height:42px;
-  display:flex;
-  align-items:center;
-  padding:0 15px;
-  color:var(--muted);
-  border-bottom:1px solid var(--border);
-  font-size:11px;
-  font-weight:650;
-  text-transform:uppercase;
-  letter-spacing:.08em;
-  background:var(--surface);
-}
-canvas,#sandbox,#editor{width:100%;height:100%;min-height:0}
-canvas{
-  display:block;
-  background:var(--surface);
-}
-#editor-wrap{position:relative;flex:1;min-height:0;display:flex}
-#line-numbers{
-  flex:0 0 44px;
-  overflow:hidden;
-  white-space:pre;
-  text-align:right;
-  user-select:none;
-  background:var(--surface-2);
-  color:#999087;
-  border:0;
-  border-right:1px solid var(--border);
-  padding:13px 8px 13px 4px;
-  font:12px/1.55 "SFMono-Regular",Consolas,"Liberation Mono",monospace;
-}
-#editor{
-  flex:1;
-  min-width:0;
-  resize:none;
-  background:#fcfbf8;
-  color:#2b2927;
-  border:0;
-  padding:13px;
-  outline:none;
-  white-space:pre;
-  font:12px/1.55 "SFMono-Regular",Consolas,"Liberation Mono",monospace;
-}
-#editor-meta{
-  position:absolute;
-  top:8px;
-  right:10px;
-  z-index:4;
-  font-size:9px;
-  color:#999087;
-  pointer-events:none;
-  background:#ffffffd9;
-  border:1px solid var(--border);
-  border-radius:7px;
-  padding:3px 6px;
-}
-#autocomplete{
-  display:none;
-  position:absolute;
-  z-index:20;
-  left:55px;
-  top:10px;
-  width:min(390px,calc(100% - 65px));
-  max-height:210px;
-  overflow:auto;
-  background:var(--surface);
-  border:1px solid var(--accent);
-  border-radius:10px;
-  box-shadow:var(--shadow);
-  font:11px/1.35 "SFMono-Regular",Consolas,monospace;
-}
-#autocomplete.show{display:block}
-.ac-item{display:grid;grid-template-columns:1fr auto;gap:8px;padding:7px 9px;cursor:pointer}
-.ac-item:hover,.ac-item.selected{background:var(--accent-soft);color:var(--text)}
-.ac-kind{opacity:.7}
-.ac-empty{padding:7px 9px;color:var(--muted)}
-#sandbox{display:block;border:0;background:#fbfaf7}
-
-#controls{
-  width:min(900px,calc(100% - 40px));
-  max-width:900px;
-  margin:0 auto;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-#input-row{
-  display:flex;
-  gap:8px;
-  align-items:flex-end;
-  padding:8px;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:18px;
-  box-shadow:var(--shadow);
-}
-#input{
-  flex:1;
-  min-width:0;
-  min-height:44px;
-  max-height:170px;
-  background:transparent;
-  color:var(--text);
-  border:0;
-  outline:none;
-  padding:10px 11px;
-  font-size:15px;
-}
-#input::placeholder{color:#9a938c}
-#send{
-  width:44px;
-  height:44px;
-  border-radius:14px;
-  background:var(--accent);
-  color:#fff;
-  border:0;
-  font-weight:750;
-  cursor:pointer;
-  font-size:0;
-}
+#app-shell{display:flex;width:100%;height:100%}
+#sidebar{width:292px;flex:0 0 292px;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:18px 12px 12px;overflow:hidden}
+.sidebar-brand{display:flex;align-items:center;gap:10px;padding:3px 8px 18px}
+.sidebar-logo{width:36px;height:36px;border-radius:11px;object-fit:cover}
+.sidebar-brand strong{display:block;font-family:Georgia,"Times New Roman",serif;font-size:23px;font-weight:600;letter-spacing:-.02em}
+.sidebar-brand span{display:block;color:var(--muted);font-size:10px;margin-top:2px}
+.sidebar-actions{display:flex;flex-direction:column;gap:4px}
+.sidebar-btn{border:0;background:transparent;color:var(--text);text-align:left;padding:10px 12px;border-radius:9px;cursor:pointer;font-size:14px;display:flex;align-items:center;gap:10px}
+.sidebar-btn:hover{background:#e9e7e2}
+.sidebar-btn.primary{background:#e9e7e2}
+.sidebar-btn .ico{width:18px;text-align:center;color:#5e5a54}
+.section-label{padding:20px 12px 8px;color:#97928a;font-size:11px;font-weight:600}
+.history{flex:1;overflow:auto;padding-right:3px}
+.history-item{display:block;width:100%;border:0;background:transparent;color:#5b5751;text-align:left;padding:8px 12px;border-radius:8px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.history-item:hover{background:#ebe9e4}
+.sidebar-bottom{border-top:1px solid var(--border);padding-top:10px}
+.profile{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:10px}
+.avatar{width:30px;height:30px;border-radius:50%;background:#d8d2c9;display:grid;place-items:center;font-size:12px;font-weight:700}
+.profile strong{font-size:13px}.profile span{display:block;color:var(--muted);font-size:10px;margin-top:2px}
+#main{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;background:var(--surface)}
+#topbar{height:64px;flex:0 0 64px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(229,226,220,.8);background:rgba(255,255,255,.88);backdrop-filter:blur(12px);z-index:10}
+.assistant-head{display:flex;align-items:center;gap:11px}
+.head-logo{width:34px;height:34px;border-radius:10px}
+.assistant-head strong{font-size:15px}
+.online{display:inline-flex;align-items:center;gap:6px;color:var(--accent);font-size:11px;font-weight:650;margin-left:4px}
+.online-dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.assistant-sub{display:block;color:var(--muted);font-size:10px;margin-top:2px}
+.top-actions{display:flex;align-items:center;gap:6px}
+.top-btn{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:9px;padding:8px 11px;font-size:12px;cursor:pointer}
+.top-btn:hover{background:var(--surface-soft)}
+.model-menu{border:1px solid var(--border);background:var(--surface);border-radius:10px;padding:8px 11px;color:var(--text);font-size:12px}
+#workspace{flex:1;min-height:0;width:100%;max-width:none;margin:0;display:flex;position:relative}
+.panel{min-width:0;min-height:0}
+#p0{flex:1;display:flex!important;flex-direction:column;background:var(--surface)}
+#p1,#p2{display:none;position:absolute;inset:0;background:var(--surface);z-index:7}
+#p1.visible,#p2.visible{display:flex}
+#p1,#p2{flex-direction:column}
+#p0 .label{display:none}
+#terminal{display:none!important}
+#chatView{flex:1;min-height:0;overflow:auto;padding:42px clamp(18px,7vw,100px) 150px;scroll-behavior:smooth}
+.chat-inner{width:min(820px,100%);margin:0 auto}
+.welcome{min-height:52vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px 10px 20px}
+.welcome-logo{width:76px;height:76px;border-radius:24px;object-fit:cover;margin-bottom:18px;box-shadow:0 10px 30px rgba(47,125,74,.12)}
+.welcome h1{font-family:Georgia,"Times New Roman",serif;font-size:34px;font-weight:500;letter-spacing:-.03em;margin:0 0 8px;color:var(--text)}
+.welcome p{margin:0;color:var(--muted);font-size:14px}
+.chat-row{display:flex;gap:12px;align-items:flex-start;margin:0 auto 22px}
+.chat-row.user{justify-content:flex-end}
+.msg-avatar{width:30px;height:30px;flex:0 0 30px;border-radius:10px;overflow:hidden;margin-top:2px;background:var(--accent-soft);border:1px solid #d9e8dc}
+.msg-avatar img{width:100%;height:100%;display:block;object-fit:cover}
+.msg-bubble{max-width:min(760px,88%);font-size:15px;line-height:1.65;color:var(--text)}
+.chat-row.user .msg-bubble{background:var(--surface-soft);border:1px solid var(--border);border-radius:17px;padding:12px 15px;line-height:1.5}
+.msg-label{font-size:11px;color:var(--muted);margin-bottom:4px}
+.msg-bubble pre{overflow:auto;background:#1f201f;color:#eef5ef;padding:13px;border-radius:10px;border:1px solid #31332f;font:12px/1.5 "SFMono-Regular",Consolas,monospace}
+.msg-bubble code{font-family:"SFMono-Regular",Consolas,monospace}
+.msg-bubble .plain{white-space:pre-wrap}
+#sources{margin-top:8px;display:none;max-height:150px;overflow:auto;padding:8px 10px;background:var(--surface-soft);border:1px solid var(--border);border-radius:10px}
+#sources.show{display:block}.source{margin-bottom:7px;line-height:1.35;font-size:11px}.source a{color:var(--accent-strong);word-break:break-all}.source span{color:var(--muted)}
+#controls{position:absolute;left:0;right:0;bottom:0;z-index:9;padding:12px clamp(18px,7vw,100px) 16px;background:linear-gradient(to bottom,rgba(255,255,255,0),rgba(255,255,255,.86) 16%,#fff 38%)}
+#composer-wrap{width:min(820px,100%);margin:0 auto}
+#input-row{display:flex;align-items:flex-end;gap:8px;padding:8px 8px 8px 13px;background:var(--surface);border:1px solid #cfcac2;border-radius:18px;box-shadow:0 4px 22px rgba(32,28,22,.08)}
+#input{flex:1;min-width:0;min-height:42px;max-height:160px;resize:none;background:transparent;color:var(--text);border:0;outline:none;padding:9px 2px;font-size:15px}
+#input::placeholder{color:#aaa49d}
+#send{width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:var(--accent);color:#fff;border:0;cursor:pointer;font-size:0}
 #send::after{content:"↑";font-size:20px;line-height:1}
-#send:hover{background:var(--accent-strong);transform:translateY(-1px)}
-#quick{
-  display:flex;
-  gap:6px;
-  flex-wrap:wrap;
-  padding:0 4px;
-}
-.quick{
-  background:transparent;
-  color:var(--muted);
-  border:1px solid var(--border);
-  border-radius:999px;
-  padding:7px 10px;
-  font-size:11px;
-  cursor:pointer;
-}
-.quick:hover{background:var(--surface);color:var(--text);border-color:#cfc7bd}
-#status{font-size:11px;color:var(--muted);min-height:15px;padding:0 5px}
-
-#sources{
-  display:none;
-  max-height:140px;
-  overflow:auto;
-  background:var(--surface-2);
-  border-top:1px solid var(--border);
-  padding:9px 12px;
-  font-size:10px;
-}
-#sources.show{display:block}
-.source{margin-bottom:7px;line-height:1.35}
-.source a{color:var(--accent-strong);word-break:break-all}
-.source span{color:var(--muted)}
-
-#review{
-  width:min(1120px,calc(100% - 40px));
-  max-width:1120px;
-  margin:12px auto 18px;
-  display:grid;
-  grid-template-columns:minmax(260px,.8fr) minmax(360px,1.2fr);
-  gap:12px;
-}
-.review-box{
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:16px;
-  padding:14px;
-  min-width:0;
-  box-shadow:var(--shadow);
-}
-.review-title{color:var(--text);font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
-#review-summary{font-size:11px;line-height:1.5;color:var(--muted);margin-bottom:7px}
-#review-list{margin:0;padding-left:18px;font-size:11px;line-height:1.5}
-#review-list li{margin:4px 0}
-#corrected-output{
-  width:100%;
-  height:240px;
-  resize:vertical;
-  background:#fcfbf8;
-  color:#2b2927;
-  border:1px solid var(--border);
-  border-radius:10px;
-  padding:10px;
-  font:11px/1.45 "SFMono-Regular",Consolas,monospace;
-  white-space:pre;
-}
-#copy-corrected{
-  margin-top:8px;
-  background:var(--accent);
-  color:#fff;
-  border:0;
-  border-radius:9px;
-  padding:8px 11px;
-  cursor:pointer;
-}
-#copy-corrected:hover{background:var(--accent-strong)}
-
-#pad{display:none;justify-content:center;gap:10px}
-.pad{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:13px 24px;touch-action:manipulation}
-
-.drop{border-color:var(--accent)!important;box-shadow:0 0 0 3px var(--accent-soft)!important}
-
+#send:hover{background:var(--accent-strong)}
+.composer-tools{display:flex;justify-content:space-between;align-items:center;margin-top:7px;padding:0 4px}
+#quick{display:flex;gap:6px;flex-wrap:wrap}
+.quick{background:transparent;border:0;color:var(--muted);border-radius:999px;padding:5px 7px;font-size:11px;cursor:pointer}
+.quick:hover{background:var(--surface-soft);color:var(--text)}
+.composer-hint{font-size:10px;color:#aaa49d}
+#status{font-size:10px;color:var(--muted);min-height:12px;padding:3px 4px 0}
+.panel .label{min-height:48px;display:flex;align-items:center;padding:0 16px;color:var(--text);border-bottom:1px solid var(--border);font-size:12px;font-weight:650;letter-spacing:.02em;background:var(--surface)}
+#editor-wrap{position:relative;flex:1;min-height:0;display:flex}
+#line-numbers{flex:0 0 44px;overflow:hidden;white-space:pre;text-align:right;user-select:none;background:var(--surface-soft);color:#999087;border:0;border-right:1px solid var(--border);padding:13px 8px;font:12px/1.55 monospace}
+#editor{flex:1;min-width:0;resize:none;background:#fcfbf8;color:#2b2927;border:0;padding:13px;outline:none;font:12px/1.55 monospace}
+#editor-meta{position:absolute;top:8px;right:10px;font-size:9px;color:#999087;background:#fff;border:1px solid var(--border);border-radius:7px;padding:3px 6px;pointer-events:none;z-index:2}
+#autocomplete{display:none;position:absolute;z-index:20;left:55px;top:10px;width:min(390px,calc(100% - 65px));max-height:210px;overflow:auto;background:var(--surface);border:1px solid var(--accent);border-radius:10px;box-shadow:var(--shadow);font:11px/1.35 monospace}
+#autocomplete.show{display:block}.ac-item{display:grid;grid-template-columns:1fr auto;gap:8px;padding:7px 9px;cursor:pointer}.ac-item:hover,.ac-item.selected{background:var(--accent-soft);color:var(--text)}.ac-kind{opacity:.7}.ac-empty{padding:7px 9px;color:var(--muted)}
+#sandbox{flex:1;width:100%;height:100%;border:0;background:#fcfbf8}
+#review{display:none}
+#pad{display:none}
+.drop{border-color:var(--accent)!important}
 @media(max-width:900px){
-  header{padding:10px 14px}
-  .model-pill{display:none}
-  #workspace{
-    width:calc(100% - 20px);
-    margin-top:10px;
-    height:58vh;
-    min-height:290px;
-    display:flex;
-    gap:0;
-    border-radius:14px;
-  }
-  .panel{display:none;border-radius:14px}
-  .panel.visible{display:flex}
-  .mobile-tabs{display:flex}
-  #controls{width:calc(100% - 20px)}
-  #review{width:calc(100% - 20px);grid-template-columns:1fr}
-  #pad{display:flex;margin-bottom:12px}
-}
-@media(max-width:520px){
-  .brand-copy strong{font-size:15px}
-  .brand-copy span{font-size:10px}
-  .brand-logo{width:38px;height:38px}
-  .toolbar .tool:nth-of-type(2){display:none}
-  #input-row{border-radius:16px}
-  #input{font-size:14px}
-  .quick{flex:0 0 auto}
-  .pad{flex:1}
-}
-</style>
-</head>
-<body>
-<header>
-<div class="brand"><img class="brand-logo" src="./anabel-logo.svg" alt="Logo Anabel"><div class="brand-copy"><strong>ANABEL</strong><span>assistente de desenvolvimento</span></div></div>
-<div class="toolbar"><span class="model-pill"><span class="status-dot"></span><b>GEMMA 4 · 31B CLOUD</b></span>
-<label class="tool" for="file-input">📎 ANEXAR</label>
-<input id="file-input" type="file" multiple accept=".html,.htm,.js,.mjs,.css,.json,.txt,.md,.xml,.svg,.csv,.py,.java,.c,.cpp,.h,.hpp,.cs,.ts,.tsx,.jsx">
-<button class="tool" id="export" type="button">💾 EXPORTAR</button>
-<button class="tool" id="undo" type="button">↶ DESFAZER</button>
-<div class="theme"><span>CRT:</span><select id="theme"><option value="green">VERDE</option><option value="amber">ÂMBAR</option></select></div>
+  #sidebar{width:72px;flex-basis:72px;padding:12px 8px}
+  .sidebar-brand{justify-content:center;padding:3px 0 16px}
+  .sidebar-brand>div{display:none}
+  .sidebar-btn{justify-content:center;padding:10px 6px}
+  .sideb<body>
+<div id="app-shell">
+  <aside id="sidebar">
+    <div class="sidebar-brand">
+      <img class="sidebar-logo" src="./anabel-logo.svg" alt="Anabel">
+      <div><strong>Anabel</strong><span>assistente de desenvolvimento</span></div>
+    </div>
+    <div class="sidebar-actions">
+      <button class="sidebar-btn primary" id="new-chat" type="button"><span class="ico">＋</span><span class="label-text">Nova conversa</span></button>
+      <button class="sidebar-btn" id="open-projects" type="button"><span class="ico">▱</span><span class="label-text">Projetos</span></button>
+      <button class="sidebar-btn" id="open-code" type="button"><span class="ico">&lt;/&gt;</span><span class="label-text">Editor de código</span></button>
+      <button class="sidebar-btn" id="open-preview" type="button"><span class="ico">▷</span><span class="label-text">Executar código</span></button>
+      <button class="sidebar-btn" id="open-files" type="button"><span class="ico">▤</span><span class="label-text">Arquivos</span></button>
+      <button class="sidebar-btn" id="open-tools" type="button"><span class="ico">✦</span><span class="label-text">Ferramentas</span></button>
+    </div>
+    <div class="section-label">Conversas recentes</div>
+    <div class="history" id="history-list"></div>
+    <div class="sidebar-bottom">
+      <div class="profile"><div class="avatar">TF</div><div><strong>Thiago</strong><span>Dev · Educador</span></div></div>
+    </div>
+  </aside>
+
+  <main id="main">
+    <header id="topbar">
+      <div class="assistant-head">
+        <img class="head-logo" src="./anabel-logo.svg" alt="Anabel">
+        <div><strong>Anabel <span class="online"><span class="online-dot"></span>Online</span></strong><span class="assistant-sub">Gemma 4 31B · servidor Anabel</span></div>
+      </div>
+      <div class="top-actions">
+        <select class="model-menu" id="model-select" aria-label="Modelo">
+          <option value="gemma4:31b-cloud">Gemma 4 31B</option>
+        </select>
+        <select class="model-menu" id="theme" aria-label="Tema">
+          <option value="green">Tema claro</option><option value="amber">Tema quente</option>
+        </select>
+        <button class="top-btn" id="export" type="button">Exportar</button>
+        <label class="top-btn" for="file-input">Anexar</label>
+        <input id="file-input" type="file" multiple accept=".html,.htm,.js,.mjs,.css,.json,.txt,.md,.xml,.svg,.csv,.py,.java,.c,.cpp,.h,.hpp,.cs,.ts,.tsx,.jsx">
+      </div>
+    </header>
+
+    <div class="mobile-tabs">
+      <button class="tab active" type="button" data-tab="0">Chat</button>
+      <button class="tab" type="button" data-tab="1">Código</button>
+      <button class="tab" type="button" data-tab="2">Preview</button>
+    </div>
+
+    <main id="workspace">
+      <section class="panel visible" id="p0">
+        <canvas id="terminal" width="450" height="450" aria-hidden="true"></canvas>
+        <div id="chatView"><div class="chat-inner" id="chat-inner"></div></div>
+        <div id="sources"></div>
+      </section>
+      <section class="panel" id="p1">
+        <div class="label">Editor de código</div>
+        <div id="editor-wrap"><div id="line-numbers" aria-hidden="true">1</div><textarea id="editor" spellcheck="false" placeholder="# Python: escreva aqui e pressione Ctrl+Espaço para sugestões..."></textarea><div id="editor-meta">LINGUAGEM: AUTO · AUTOCOMPLETE: CTRL+ESPAÇO</div><div id="autocomplete" role="listbox" aria-label="Sugestões de código"></div></div>
+      </section>
+      <section class="panel" id="p2"><div class="label">Pré-visualização</div><iframe id="sandbox" title="Live View" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe></section>
+    </main>
+
+    <section id="controls">
+      <div id="composer-wrap">
+        <div id="input-row"><input id="input" autocomplete="off" autofocus placeholder="Digite sua mensagem para a Anabel..."><button id="send" type="button" aria-label="Enviar"></button></div>
+        <div class="composer-tools"><div id="quick">
+          <button class="quick" data-command="/analisar" type="button">Analisar</button>
+          <button class="quick" data-command="/corrigir" type="button">Corrigir</button>
+          <button class="quick" data-command="/melhorar" type="button">Melhorar</button>
+          <button class="quick" data-command="/refatorar" type="button">Refatorar</button>
+          <button class="quick" data-command="/executar" type="button">Executar</button>
+          <button class="quick" data-command="/ideias jogo estratégia 8-bit" type="button">Ideias</button>
+          <button class="quick" data-command="/fontes" type="button">Fontes</button>
+        </div><span class="composer-hint">Enter envia · Shift+Enter quebra linha</span></div>
+        <div id="status"></div>
+      </div>
+    </section>
+
+    <section id="review" aria-live="polite">
+      <div class="review-box"><div class="review-title">Ideias de melhoria</div><div id="review-summary">Analise ou corrija um código para gerar recomendações técnicas.</div><ul id="review-list"></ul></div>
+      <div class="review-box"><div class="review-title">Código corrigido</div><textarea id="corrected-output" spellcheck="false" readonly placeholder="O código corrigido aparecerá aqui."></textarea><button id="copy-corrected" type="button">Copiar código</button></div>
+    </section>
+    <section id="pad"><button class="pad" id="left" type="button">◀</button><button class="pad" id="fire" type="button">●</button><button class="pad" id="right" type="button">▶</button></section>
+  </main>
 </div>
-</header>
-<div class="mobile-tabs">
-<button class="tab active" type="button" data-tab="0">Terminal</button>
-<button class="tab" type="button" data-tab="1">Código</button>
-<button class="tab" type="button" data-tab="2">Live View</button>
-</div>
-<main id="workspace">
-<section class="panel visible" id="p0"><div class="label">Conversa com Anabel</div><canvas id="terminal" width="450" height="450"></canvas><div id="sources"></div></section>
-<section class="panel" id="p1"><div class="label">Editor de código</div><div id="editor-wrap"><div id="line-numbers" aria-hidden="true">1</div><textarea id="editor" spellcheck="false" placeholder="# Python: escreva aqui e pressione Ctrl+Espaço para sugestões..."></textarea><div id="editor-meta">LINGUAGEM: AUTO · AUTOCOMPLETE: CTRL+ESPAÇO</div><div id="autocomplete" role="listbox" aria-label="Sugestões de código"></div></div></section>
-<section class="panel" id="p2"><div class="label">Pré-visualização</div><iframe id="sandbox" title="Live View" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe></section>
-</main>
-<section id="controls">
-<div id="input-row"><input id="input" autocomplete="off" autofocus placeholder="Ex.: Anabel, me dê uma ideia de jogo de estratégia 8-bit"><button id="send" type="button">EXECUTAR</button></div>
-<div id="quick">
-<button class="quick" data-command="/ajuda" type="button">/ajuda</button>
-<button class="quick" data-command="/analisar" type="button">/analisar</button>
-<button class="quick" data-command="/corrigir" type="button">/corrigir</button>
-<button class="quick" data-command="/melhorar" type="button">/melhorar</button>
-<button class="quick" data-command="/refatorar" type="button">/refatorar</button>
-<button class="quick" data-command="/executar" type="button">/executar</button>
-<button class="quick" data-command="/ideias jogo estratégia 8-bit" type="button">/ideias</button>
-<button class="quick" data-command="/fontes" type="button">/fontes</button>
-</div>
-<div id="status"></div>
-</section>
-<section id="review" aria-live="polite">
-<div class="review-box">
-<div class="review-title">🔎 Ideias de melhoria</div>
+<script src="./firebase-config.js"></script>
+<script type="module" src="./firebase-ai.js"></script>
+lass="review-title">🔎 Ideias de melhoria</div>
 <div id="review-summary">Analise ou corrija um código para gerar recomendações técnicas.</div>
 <ul id="review-list"></ul>
 </div>
@@ -472,108 +244,119 @@ canvas{
     return lines;
   }
 
-  function draw(){
-    const r=canvas.getBoundingClientRect();
-    const d=Math.max(1,Math.min(2,devicePixelRatio||1));
-    const cw=Math.max(320,r.width||720),ch=Math.max(240,r.height||420);
-    const w=Math.floor(cw*d),h=Math.floor(ch*d);
-    if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
-    ctx.setTransform(d,0,0,d,0,0);
+  function renderChatHistory(){
+    const chat=$("#chat-inner");
+    const view=$("#chatView");
+    if(!chat||!view)return;
+    chat.innerHTML="";
+    const entries=state.history.slice(-80).map(x=>String(x||"").trim()).filter(Boolean);
+    let displayed=0;
 
-    const bg=getComputedStyle(document.documentElement).getPropertyValue("--surface").trim()||"#fffdf9";
-    const textColor=getComputedStyle(document.documentElement).getPropertyValue("--text").trim()||"#242321";
-    const muted=getComputedStyle(document.documentElement).getPropertyValue("--muted").trim()||"#77716a";
-    const accent=getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()||"#2f7d4a";
-    const accentSoft=getComputedStyle(document.documentElement).getPropertyValue("--accent-soft").trim()||"#e7f1e9";
-    const border=getComputedStyle(document.documentElement).getPropertyValue("--border").trim()||"#ddd6cd";
-
-    ctx.fillStyle=bg;
-    ctx.fillRect(0,0,cw,ch);
-
-    const entries=state.history.slice(-40);
-    const messages=[];
-    for(const entry of entries){
-      const raw=String(entry||"").trim();
-      if(!raw)continue;
-      let role="system";
-      let content=raw;
-      if(/^DEV:\s*/i.test(raw)){role="user";content=raw.replace(/^DEV:\s*/i,"").trim();}
-      else if(/^ANABEL(?:\s*\[[^\]]+\])?:\s*/i.test(raw)){
-        role="assistant";
-        content=raw.replace(/^ANABEL(?:\s*\[[^\]]+\])?:\s*/i,"").trim();
-      }else if(/^ANABEL\s*\[[^\]]+\]:/i.test(raw)){
-        role="assistant";
-        content=raw.replace(/^ANABEL\s*\[[^\]]+\]:\s*/i,"").trim();
-      }else if(/^(RESPOSTA|EXPLICAÇÃO|EXEMPLO|DICA):/i.test(raw)){role="assistant";}
-      messages.push({role,content});
-    }
-
-    const pad=18,gap=12,maxW=Math.min(690,cw-36);
-    ctx.font='13px Inter,system-ui,-apple-system,"Segoe UI",sans-serif';
-    const lineH=20;
-
-    const wrapped=[];
-    for(const m of messages){
-      const parts=[];
-      let remaining=m.content;
-      while(remaining.length){
-        if(remaining.length<=76){parts.push(remaining);break;}
-        let cut=76;
-        const space=remaining.lastIndexOf(" ",cut);
-        if(space>38)cut=space;
-        parts.push(remaining.slice(0,cut).trimEnd());
-        remaining=remaining.slice(cut).trimStart();
+    function appendMessage(role,text){
+      const row=document.createElement("div");
+      row.className="chat-row"+(role==="user"?" user":"");
+      if(role!=="user"){
+        const avatar=document.createElement("div");
+        avatar.className="msg-avatar";
+        const img=document.createElement("img");
+        img.src="./anabel-logo.svg";
+        img.alt="";
+        avatar.appendChild(img);
+        row.appendChild(avatar);
       }
-      if(!parts.length)parts.push("");
-      wrapped.push({...m,parts});
+      const bubble=document.createElement("div");
+      bubble.className="msg-bubble";
+
+      const label=document.createElement("div");
+      label.className="msg-label";
+      label.textContent=role==="user"?"Você":"Anabel";
+      bubble.appendChild(label);
+
+      const content=document.createElement("div");
+      content.className="plain";
+      content.textContent=text;
+      bubble.appendChild(content);
+      row.appendChild(bubble);
+      chat.appendChild(row);
+      displayed++;
     }
 
-    let totalH=20;
-    for(const m of wrapped)totalH+=28+m.parts.length*lineH+gap;
-    let y=Math.max(18,ch-totalH);
-
-    for(const m of wrapped){
-      const bodyW=Math.min(maxW,Math.max(150,Math.max(...m.parts.map(x=>ctx.measureText(x).width))+28));
-      const bubbleW=m.role==="user"?Math.min(bodyW,maxW):Math.min(bodyW,maxW);
-      const x=m.role==="user"?cw-pad-bubbleW:pad;
-      ctx.beginPath();
-      const bubbleH=28+m.parts.length*lineH;
-      const radius=14;
-      const bubbleX=x,bubbleY=y;
-      ctx.fillStyle=m.role==="user"?accentSoft:"#fbfaf7";
-      ctx.strokeStyle=border;
-      ctx.lineWidth=1;
-      ctx.moveTo(bubbleX+radius,bubbleY);
-      ctx.lineTo(bubbleX+bubbleW-radius,bubbleY);
-      ctx.quadraticCurveTo(bubbleX+bubbleW,bubbleY,bubbleX+bubbleW,bubbleY+radius);
-      ctx.lineTo(bubbleX+bubbleW,bubbleY+bubbleH-radius);
-      ctx.quadraticCurveTo(bubbleX+bubbleW,bubbleY+bubbleH,bubbleX+bubbleW-radius,bubbleY+bubbleH);
-      ctx.lineTo(bubbleX+radius,bubbleY+bubbleH);
-      ctx.quadraticCurveTo(bubbleX,bubbleY+bubbleH,bubbleX,bubbleY+bubbleH-radius);
-      ctx.lineTo(bubbleX,bubbleY+radius);
-      ctx.quadraticCurveTo(bubbleX,bubbleY,bubbleX+radius,bubbleY);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle=m.role==="user"?accent:textColor;
-      ctx.font="600 11px Inter,system-ui,-apple-system,\"Segoe UI\",sans-serif";
-      ctx.fillText(m.role==="user"?"você":"anabel",bubbleX+14,bubbleY+17);
-
-      ctx.fillStyle=textColor;
-      ctx.font='13px Inter,system-ui,-apple-system,"Segoe UI",sans-serif';
-      m.parts.forEach((line,i)=>ctx.fillText(line,bubbleX+14,bubbleY+38+i*lineH));
-      y+=bubbleH+gap;
-      if(y>ch+80)break;
+    for(const raw of entries){
+      if(/^DEV:\s*/i.test(raw)){
+        appendMessage("user",raw.replace(/^DEV:\s*/i,"").trim());
+        continue;
+      }
+      if(/^ANABEL\s*\[[^\]]+\]:\s*/i.test(raw)){
+        appendMessage("assistant",raw.replace(/^ANABEL\s*\[[^\]]+\]:\s*/i,"").trim());
+        continue;
+      }
+      if(/^ANABEL:\s*/i.test(raw)){
+        appendMessage("assistant",raw.replace(/^ANABEL:\s*/i,"").trim());
+        continue;
+      }
+      if(/^RESPOSTA SIMPLIFICADA:\s*/i.test(raw)){
+        appendMessage("assistant",raw.replace(/^RESPOSTA SIMPLIFICADA:\s*/i,"").trim());
+        continue;
+      }
+      if(/^(EXPLICAÇÃO|EXEMPLO|DICA|ANÁLISE):/i.test(raw)){
+        appendMessage("assistant",raw);
+        continue;
+      }
+      if(/^(SELFTEST|COMANDOS|PERGUNTA|IDEIA \d+|PERF|PROFESSOR PYTHON|ERRO|FALHA|AÇÃO)/i.test(raw)){
+        appendMessage("assistant",raw);
+        continue;
+      }
+      if(displayed===0 && /^ANABEL/i.test(raw)){
+        appendMessage("assistant",raw);
+      }
     }
 
-    if(messages.length===0){
-      ctx.fillStyle=muted;
-      ctx.font='13px Inter,system-ui,-apple-system,"Segoe UI",sans-serif';
-      ctx.fillText("comece uma conversa com a anabel",pad,40);
+    if(!displayed){
+      const welcome=document.createElement("div");
+      welcome.className="welcome";
+      const img=document.createElement("img");
+      img.className="welcome-logo";
+      img.src="./anabel-logo.svg";
+      img.alt="Anabel";
+      const h=document.createElement("h1");
+      h.textContent="Como posso ajudar?";
+      const p=document.createElement("p");
+      p.textContent="programação, código, jogos, sites e ideias";
+      welcome.append(img,h,p);
+      chat.appendChild(welcome);
     }
+
+    requestAnimationFrame(()=>{
+      view.scrollTop=view.scrollHeight;
+    });
   }
 
+  function renderHistoryList(){
+    const el=$("#history-list");
+    if(!el)return;
+    el.innerHTML="";
+    const items=[];
+    for(const raw of state.history){
+      if(/^DEV:\s*/i.test(raw)){
+        const t=raw.replace(/^DEV:\s*/i,"").trim();
+        if(t)items.push(t);
+      }
+    }
+    items.slice(-10).reverse().forEach(t=>{
+      const b=document.createElement("button");
+      b.className="history-item";
+      b.type="button";
+      b.textContent=t;
+      b.title=t;
+      b.addEventListener("click",()=>{input.value=t;input.focus();});
+      el.appendChild(b);
+    });
+  }
+
+  function draw(){
+    renderChatHistory();
+    renderHistoryList();
+  }
   function switchTab(i){
     i=Number(i);if(![0,1,2].includes(i))return;
     qsa(".tab").forEach((b,n)=>{b.classList.toggle("active",n===i);b.setAttribute("aria-selected",String(n===i));});
@@ -2268,6 +2051,17 @@ canvas{
   setLanguage("auto");
   updateLineNumbers();
   restoreSession();
+  $("#new-chat")?.addEventListener("click",()=>{
+    state.history=["ANABEL: sistema pronto. Nova conversa iniciada."];
+    state.sourceList=[];state.pendingAction=null;
+    renderChatHistory();renderHistoryList();input.value="";input.focus();
+  });
+  $("#open-code")?.addEventListener("click",()=>switchTab(1));
+  $("#open-preview")?.addEventListener("click",()=>switchTab(2));
+  $("#open-projects")?.addEventListener("click",()=>log("ANABEL: área de projetos pronta para a próxima etapa."));
+  $("#open-files")?.addEventListener("click",()=>fileInput?.click());
+  $("#open-tools")?.addEventListener("click",()=>log("ANABEL: ferramentas rápidas disponíveis abaixo do campo de conversa."));
+  $("#model-select")?.addEventListener("change",e=>status.textContent="Modelo selecionado: "+e.target.value);
   send.addEventListener("click",sendCommand);
   input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();sendCommand();}});
 

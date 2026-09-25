@@ -25,8 +25,15 @@ h1{margin:0;font-size:20px;letter-spacing:2px;text-transform:uppercase}
 #workspace{width:1400px;max-width:100%;height:min(480px,64vh);min-height:310px;display:flex;gap:12px}
 .panel{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
 .label{font-size:11px;color:var(--muted);margin-bottom:5px;text-transform:uppercase}
-canvas,#sandbox,#editor{width:100%;height:100%;min-height:0}
+.terminal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}
+.terminal-actions{display:flex;gap:5px}
+.terminal-action{background:#101010;color:var(--fg);border:1px solid var(--fg);padding:4px 8px;font:10px monospace;cursor:pointer}
+.terminal-action:hover{background:var(--fg);color:#000}
+#terminal-wrap{position:relative;flex:1;min-height:0}
+canvas,#terminal-text,#sandbox,#editor{width:100%;height:100%;min-height:0}
 canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0 0 20px var(--glow)}
+#terminal-text{position:absolute;inset:0;margin:0;padding:9px;color:var(--fg);background:#000;border:2px solid var(--border);box-shadow:0 0 20px var(--glow);font:12px/1.42 "Courier New",monospace;white-space:pre-wrap;overflow:auto;overflow-wrap:anywhere;user-select:text;-webkit-user-select:text;text-shadow:0 0 3px var(--fg);cursor:text}
+#terminal-text::selection{background:var(--fg);color:#000;text-shadow:none}
 #editor-wrap{position:relative;flex:1;min-height:0;display:flex}#line-numbers{flex:0 0 42px;overflow:hidden;white-space:pre;text-align:right;user-select:none;background:#070707;color:var(--muted);border:2px solid var(--border);border-right:0;padding:12px 7px 12px 3px;font:12px/1.4 "Courier New",monospace;tab-size:4;line-height:1.4}#editor{flex:1;min-width:0;resize:none;background:#0b0b0b;color:var(--fg);border:2px solid var(--border);padding:12px;outline:none;white-space:pre;font:12px/1.4 "Courier New",monospace;tab-size:4}#editor-meta{position:absolute;top:5px;right:8px;z-index:4;font-size:9px;color:var(--muted);pointer-events:none;background:#000b;padding:2px 5px}#autocomplete{display:none;position:absolute;z-index:20;left:10px;top:10px;width:min(390px,calc(100% - 20px));max-height:210px;overflow:auto;background:#050505;border:1px solid var(--fg);box-shadow:0 0 15px var(--glow);font:11px/1.35 "Courier New",monospace}#autocomplete.show{display:block}.ac-item{display:grid;grid-template-columns:1fr auto;gap:8px;padding:6px 8px;cursor:pointer}.ac-item:hover,.ac-item.selected{background:var(--fg);color:#000}.ac-kind{opacity:.7}.ac-item.selected .ac-kind{opacity:.85}.ac-empty{padding:7px 8px;color:var(--muted)}
 #sandbox{display:block;border:2px solid var(--border);background:#000}
 #controls{width:1400px;max-width:100%;display:flex;flex-direction:column;gap:7px}
@@ -72,7 +79,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
 <button class="tab" type="button" data-tab="2">Live View</button>
 </div>
 <main id="workspace">
-<section class="panel visible" id="p0"><div class="label">📟 Terminal CRT</div><canvas id="terminal" width="450" height="450"></canvas><div id="sources"></div></section>
+<section class="panel visible" id="p0"><div class="terminal-head"><div class="label">📟 Terminal CRT</div><div class="terminal-actions"><button class="terminal-action" id="copy-chat" type="button" title="Copiar conversa">COPIAR CHAT</button></div></div><div id="terminal-wrap"><canvas id="terminal" width="450" height="450" aria-hidden="true"></canvas><pre id="terminal-text" aria-label="Conversa da Anabel"></pre></div><div id="sources"></div></section>
 <section class="panel" id="p1"><div class="label">💻 Professor Python / Código Fonte</div><div id="editor-wrap"><div id="line-numbers" aria-hidden="true">1</div><textarea id="editor" spellcheck="false" placeholder="# Python: escreva aqui e pressione Ctrl+Espaço para sugestões..."></textarea><div id="editor-meta">LINGUAGEM: AUTO · AUTOCOMPLETE: CTRL+ESPAÇO</div><div id="autocomplete" role="listbox" aria-label="Sugestões de código"></div></div></section>
 <section class="panel" id="p2"><div class="label">🚀 Sandbox de Execução</div><iframe id="sandbox" title="Live View" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe></section>
 </main>
@@ -112,6 +119,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   const $=(s,r=document)=>r.querySelector(s);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
   const canvas=$("#terminal"),ctx=canvas.getContext("2d",{alpha:false});
+  const terminalText=$("#terminal-text"),copyChat=$("#copy-chat");
   const editor=$("#editor"),sandbox=$("#sandbox"),input=$("#input"),send=$("#send");
   const fileInput=$("#file-input"),sources=$("#sources"),status=$("#status");
   const reviewSummary=$("#review-summary"),reviewList=$("#review-list"),correctedOutput=$("#corrected-output"),copyCorrected=$("#copy-corrected");
@@ -152,6 +160,10 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   }
 
   function draw(){
+    if(terminalText){
+      terminalText.textContent=state.history.slice(-120).map(x=>String(x||"")).join("\n");
+      terminalText.scrollTop=terminalText.scrollHeight;
+    }
     const r=canvas.getBoundingClientRect(),d=Math.max(1,Math.min(2,devicePixelRatio||1));
     const w=Math.max(1,Math.floor((r.width||450)*d)),h=Math.max(1,Math.floor((r.height||450)*d));
     if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
@@ -1862,6 +1874,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   updateLineNumbers();
   restoreSession();
   send.addEventListener("click",sendCommand);
+  input.addEventListener("paste",()=>{ setTimeout(()=>input.focus(),0); });
   input.addEventListener("keydown",e=>{
     if(e.isComposing)return;
     if(e.key==="Enter"||e.code==="NumpadEnter"){
@@ -1872,6 +1885,25 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
   });
 
   qsa(".quick").forEach(b=>b.addEventListener("click",()=>{input.value=b.dataset.command;sendCommand();}));
+  copyChat?.addEventListener("click",async()=>{
+    const text=state.history.slice(-120).map(x=>String(x||"")).join("\n");
+    if(!text.trim()){status.textContent="Chat vazio.";return;}
+    try{
+      await navigator.clipboard.writeText(text);
+      status.textContent="Conversa copiada.";
+    }catch(e){
+      if(terminalText){
+        terminalText.focus();
+        const range=document.createRange();
+        range.selectNodeContents(terminalText);
+        const sel=window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        status.textContent="Conversa selecionada; pressione Ctrl+C.";
+      }
+    }
+  });
+
   copyCorrected.addEventListener("click",async()=>{
     if(!correctedOutput.value.trim()){log("ANABEL: não há código corrigido para copiar.");return;}
     try{

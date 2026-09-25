@@ -40,7 +40,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 #sources{display:none;margin:0 auto 10px;width:min(900px,calc(100% - 36px));max-height:120px;overflow:auto;background:#fafafa;border:1px solid var(--line);padding:7px;font-size:9px}.source{margin-bottom:5px}.source a{color:#111}
 #controls{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#ffffff00,#fff 25%);padding:12px 18px 12px;z-index:9}
 #composer-wrap{width:min(900px,100%);margin:0 auto}
-#input-row{display:flex;gap:6px;padding:6px;background:#fff;border:1px solid #111;border-radius:5px;box-shadow:2px 2px 0 #111}
+#composer-form{margin:0}#input-row{display:flex;gap:6px;padding:6px;background:#fff;border:1px solid #111;border-radius:5px;box-shadow:2px 2px 0 #111}
 #input{flex:1;border:0;outline:none;background:#fff;color:#111;min-height:36px;padding:7px;font-size:12px}
 #input::placeholder{color:#999}
 #send{min-width:84px;height:36px;border:1px solid #111;background:#111;color:#fff;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:background .15s,box-shadow .15s,transform .08s,opacity .15s}
@@ -92,8 +92,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <section class="panel" id="p1"><div class="label">CÓDIGO</div><div id="editor-wrap"><div id="line-numbers" aria-hidden="true">1</div><textarea id="editor" spellcheck="false" placeholder="# código..."></textarea><div id="editor-meta">AUTO</div><div id="autocomplete" role="listbox"></div></div></section>
 <section class="panel" id="p2"><div class="label">PREVIEW</div><iframe id="sandbox" title="Live View" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe></section>
 </main>
-<section id="controls"><div id="composer-wrap"><div id="input-row"><input id="input" autocomplete="off" autofocus aria-label="Mensagem para Anabel" placeholder="digite um comando ou pergunta..."><button id="send" class="send-btn" type="button" aria-label="Enviar mensagem" title="Enviar mensagem"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path d="m4 4 16 8-16 8 3-8-3-8z"/><path d="M7 12h10"/></svg><span>ENVIAR</span></button></div><div class="composer-tools"><div id="quick"><button class="quick" data-command="/analisar" type="button">analisar</button><button class="quick" data-command="/corrigir" type="button">corrigir</button><button class="quick" data-command="/melhorar" type="button">melhorar</button><button class="quick" data-command="/refatorar" type="button">refatorar</button><button class="quick" data-command="/executar" type="button">executar</button><button class="quick" data-command="/fontes" type="button">fontes</button></div><span class="key-hint" aria-label="Atalho de teclado"><kbd>ENTER</kbd><span>enviar</span></span></div><div id="status">pronto</div></div></section>
-<section id="review" aria-live="polite"><div class="review-box"><div class="review-title">Ideias de melhoria</div><div id="review-summary"></div><ul id="review-list"></ul></div><div class="review-box"><div class="review-title">Código corrigido</div><textarea id="corrected-output" spellcheck="false" readonly></textarea><button id="copy-corrected" type="button">Copiar</button></div></section>
+<section id="controls"><div id="composer-wrap"><form id="composer-form" autocomplete="off"><div id="input-row"><input id="input" autocomplete="off" autofocus aria-label="Mensagem para Anabel" placeholder="digite um comando ou pergunta..."><button id="send" class="send-btn" type="submit" aria-label="Enviar mensagem" title="Enviar mensagem"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path d="m4 4 16 8-16 8 3-8-3-8z"/><path d="M7 12h10"/></svg><span>ENVIAR</span></button></div><div class="composer-tools"><div id="quick"><button class="quick" data-command="/analisar" type="button">analisar</button><button class="quick" data-command="/corrigir" type="button">corrigir</button><button class="quick" data-command="/melhorar" type="button">melhorar</button><button class="quick" data-command="/refatorar" type="button">refatorar</button><button class="quick" data-command="/executar" type="button">executar</button><button class="quick" data-command="/fontes" type="button">fontes</button></div><span class="key-hint" aria-label="Atalho de teclado"><kbd>ENTER</kbd><span>enviar</span></span></div><div id="status">pronto</div></div></form></div></section><section id="review" aria-live="polite"><div class="review-box"><div class="review-title">Ideias de melhoria</div><div id="review-summary"></div><ul id="review-list"></ul></div><div class="review-box"><div class="review-title">Código corrigido</div><textarea id="corrected-output" spellcheck="false" readonly></textarea><button id="copy-corrected" type="button">Copiar</button></div></section>
 <section id="pad"></section>
 </main></div>
 <script src="./firebase-config.js"></script>
@@ -105,7 +104,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   const $=(s,r=document)=>r.querySelector(s);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
   const canvas=$("#terminal"),ctx=canvas.getContext("2d",{alpha:false});
-  const editor=$("#editor"),sandbox=$("#sandbox"),input=$("#input"),send=$("#send");
+  const editor=$("#editor"),sandbox=$("#sandbox"),input=$("#input"),send=$("#send"),composerForm=$("#composer-form");
   const fileInput=$("#file-input"),sources=$("#sources"),status=$("#status");
   const reviewSummary=$("#review-summary"),reviewList=$("#review-list"),correctedOutput=$("#corrected-output"),copyCorrected=$("#copy-corrected");
   const autocomplete=$("#autocomplete"),editorMeta=$("#editor-meta"),lineNumbers=$("#line-numbers");
@@ -1784,13 +1783,20 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   $("#open-files")?.addEventListener("click",()=>fileInput.click());
   $("#open-tools")?.addEventListener("click",()=>log("ANABEL: ferramentas disponíveis nos atalhos."));
   $("#model-select")?.addEventListener("change",e=>status.textContent="Modelo: "+e.target.value);
-  send.addEventListener("click",sendCommand);
+  composerForm.addEventListener("submit",e=>{
+    e.preventDefault();
+    sendCommand();
+  });
+  send.addEventListener("click",e=>{
+    e.preventDefault();
+    composerForm.requestSubmit();
+  });
   input.addEventListener("keydown",e=>{
     if(e.isComposing)return;
     if(e.key==="Enter"||e.code==="NumpadEnter"){
       e.preventDefault();
       e.stopPropagation();
-      sendCommand();
+      composerForm.requestSubmit();
     }
   });
 

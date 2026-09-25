@@ -124,8 +124,25 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 
   const norm=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
   const esc=v=>String(v).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c]));
-  function log(v){state.history.push(String(v));drawLater();}
-  function drawLater(){if(state.queued)return;state.queued=requestAnimationFrame(()=>{state.queued=false;draw();});}
+  function log(v){
+    state.history.push(String(v));
+    // Atualiza o chat imediatamente para que cada mensagem recebida fique visível,
+    // mesmo quando o navegador atrasa ou falha no repaint via requestAnimationFrame.
+    renderChat();
+    drawLater();
+  }
+  function drawLater(){
+    if(state.queued)return;
+    const repaint=()=>{
+      state.queued=false;
+      try{draw();}catch(error){console.error("Anabel render:",error);}
+    };
+    if(typeof window.requestAnimationFrame==="function"){
+      state.queued=requestAnimationFrame(repaint);
+    }else{
+      state.queued=setTimeout(repaint,0);
+    }
+  }
   function wrapTerminalText(text,chars){
     const lines=[];
     for(const rawLine of String(text??"").split(/\r?\n/)){

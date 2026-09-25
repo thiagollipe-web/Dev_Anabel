@@ -4,97 +4,105 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#050505">
-<title>Anabel — Dev Terminal</title>
+<title>Dev_Anabel — Retro Development Bot</title>
 <style>
-:root{--bg:#f5f5f5;--panel:#fff;--ink:#111;--muted:#666;--line:#d6d6d6;--soft:#ededed;--green:#222}
+:root{--bg:#050505;--panel:#000;--border:#333;--fg:#00ff33;--glow:rgba(0,255,51,.2);--muted:#888;--warn:#ffcc00}
+[data-theme="amber"]{--fg:#ffb000;--glow:rgba(255,176,0,.2)}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--ink)}
-body{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;overflow:hidden}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font-family:monospace}
+body{padding:10px;display:flex;flex-direction:column;align-items:center;gap:10px;overscroll-behavior:contain}
 button,input,textarea,select{font:inherit}
-button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #111;outline-offset:2px}
-#app-shell{height:100%;display:flex}
-#sidebar{width:220px;flex:0 0 220px;background:#111;color:#fff;border-right:1px solid #000;display:flex;flex-direction:column;padding:14px 10px;overflow:hidden}
-.sidebar-brand{display:flex;align-items:center;gap:10px;padding:4px 6px 18px;border-bottom:1px solid #333}
-.sidebar-logo{width:38px;height:38px;border-radius:8px;background:#fff}.sidebar-brand strong{display:block;font-size:18px}.sidebar-brand span{display:block;color:#aaa;font-size:9px;margin-top:3px}
-.sidebar-actions{display:flex;flex-direction:column;gap:4px;padding-top:12px}
-.sidebar-btn{border:1px solid transparent;background:transparent;color:#eee;text-align:left;padding:9px 8px;border-radius:5px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:9px;transition:background .15s,color .15s,transform .08s}
-.sidebar-btn:hover,.sidebar-btn.primary{background:#fff;color:#111}
-.sidebar-btn:active{transform:translateY(1px)}
-.ico{width:20px;height:20px;flex:0 0 20px;display:grid;place-items:center}
-.ico svg{width:18px;height:18px;display:block;stroke:currentColor}
-.section-label{padding:18px 8px 7px;color:#999;font-size:9px;text-transform:uppercase}.history{flex:1;overflow:auto}.history-item{display:block;width:100%;border:0;background:transparent;color:#bbb;text-align:left;padding:6px 8px;border-radius:4px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px}.history-item:hover{background:#222;color:#fff}
-.sidebar-bottom{border-top:1px solid #333;padding-top:9px}.profile{display:flex;align-items:center;gap:8px;padding:7px 6px}.avatar{width:26px;height:26px;border:1px solid #777;border-radius:50%;display:grid;place-items:center;font-size:9px}.profile strong{font-size:11px}.profile span{display:block;color:#999;font-size:8px;margin-top:2px}
-#main{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;background:#fff}
-#topbar{height:54px;flex:0 0 54px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);background:#fff}
-.assistant-head{display:flex;align-items:center;gap:9px}.head-logo{width:30px;height:30px;border-radius:7px}.assistant-head strong{font-size:13px}.assistant-sub{display:block;color:#888;font-size:9px;margin-top:2px}.online{font-size:9px;margin-left:6px}.online-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#111;margin-right:4px}
-.top-actions{display:flex;gap:5px;align-items:center}.top-btn,.model-menu{border:1px solid var(--line);background:#fff;color:#111;border-radius:4px;padding:6px 8px;font-size:10px;cursor:pointer}.top-btn:hover,.model-menu:hover{background:var(--soft)}
-#workspace{flex:1;min-height:0;display:flex;position:relative}.panel{min-width:0;min-height:0}
-#p0{flex:1;display:flex!important;flex-direction:column;background:#fff}
-#p1,#p2{display:none;position:absolute;inset:0;background:#fff;z-index:7;flex-direction:column}
-#p1.visible,#p2.visible{display:flex!important}
-#terminal{display:none!important}
-#chatView{flex:1;overflow:auto;padding:26px 18px 125px;background:#fff}
-.chat-inner{width:min(900px,100%);margin:0 auto}
-.welcome{padding:80px 15px 30px;text-align:center}.welcome-logo{width:64px;height:64px;margin-bottom:15px;border:1px solid #111;border-radius:10px}.welcome h1{margin:0 0 8px;font-size:24px;font-weight:700}.welcome p{margin:0;color:#777;font-size:11px}
-.chat-row{display:flex;gap:9px;align-items:flex-start;margin:0 0 18px}.chat-row.user{justify-content:flex-end}.msg-avatar{width:25px;height:25px;flex:0 0 25px;border:1px solid #111;border-radius:6px;overflow:hidden}.msg-avatar img{width:100%;height:100%;display:block}.msg-bubble{max-width:min(760px,90%);font-size:12px;line-height:1.55}.chat-row.user .msg-bubble{background:#f0f0f0;border:1px solid var(--line);padding:9px 11px;border-radius:6px}.msg-label{color:#777;font-size:9px;margin-bottom:3px}.plain{white-space:pre-wrap;overflow-wrap:anywhere}.msg-bubble pre{background:#111;color:#fff;border-radius:4px;padding:10px;overflow:auto;font-size:11px}
-#sources{display:none;margin:0 auto 10px;width:min(900px,calc(100% - 36px));max-height:120px;overflow:auto;background:#fafafa;border:1px solid var(--line);padding:7px;font-size:9px}.source{margin-bottom:5px}.source a{color:#111}
-#controls{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#ffffff00,#fff 25%);padding:12px 18px 12px;z-index:9}
-#composer-wrap{width:min(900px,100%);margin:0 auto}
-#composer-form{margin:0}#input-row{display:flex;gap:6px;padding:6px;background:#fff;border:1px solid #111;border-radius:5px;box-shadow:2px 2px 0 #111}
-#input{flex:1;border:0;outline:none;background:#fff;color:#111;min-height:36px;padding:7px;font-size:12px}
-#input::placeholder{color:#999}
-#send{min-width:84px;height:36px;border:1px solid #111;background:#111;color:#fff;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:background .15s,box-shadow .15s,transform .08s,opacity .15s}
-#send svg{width:15px;height:15px;stroke:currentColor}
-#send:hover{background:#222;box-shadow:0 0 0 2px #e2e2e2}
-#send:active{transform:translateY(1px);box-shadow:none}
-#send:disabled{opacity:.55;cursor:wait;box-shadow:none}
-.composer-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:7px}
-#quick{display:flex;gap:4px;flex-wrap:wrap}.quick{background:#fff;border:1px solid var(--line);color:#333;border-radius:3px;padding:4px 7px;font-size:9px;cursor:pointer;transition:background .15s,border-color .15s}.quick:hover{border-color:#111;background:#f0f0f0}
-.key-hint{display:inline-flex;align-items:center;gap:5px;font-size:8px;color:#777;white-space:nowrap}.key-hint kbd{min-width:38px;padding:3px 5px;border:1px solid #bbb;border-bottom-width:2px;border-radius:3px;background:#f6f6f6;color:#222;font:700 8px/1 monospace;text-align:center}
-#status{min-height:12px;padding-top:5px;font-size:9px;color:#555}
-.panel .label{height:40px;flex:0 0 40px;display:flex;align-items:center;padding:0 11px;border-bottom:1px solid var(--line);font-size:10px;font-weight:700}.panel #editor-wrap{position:relative;flex:1;display:flex}#line-numbers{flex:0 0 38px;background:#f1f1f1;color:#777;padding:10px 6px;text-align:right;font:11px/1.5 monospace;overflow:hidden}#editor{flex:1;border:0;background:#fff;color:#111;padding:10px;outline:none;font:11px/1.5 monospace;resize:none}#editor-meta{position:absolute;right:8px;top:6px;color:#777;font-size:8px}#autocomplete{display:none;position:absolute;left:45px;top:7px;z-index:20;background:#fff;border:1px solid #111;max-height:180px;overflow:auto;width:320px}#autocomplete.show{display:block}#sandbox{border:0;flex:1;width:100%;background:#fff}
-#review,#pad{display:none}
-.mobile-tabs{display:none}
-@media(max-width:760px){
-  #sidebar{width:54px;flex-basis:54px;padding:10px 5px}.sidebar-brand{justify-content:center;padding:0 0 12px}.sidebar-brand>div{display:none}.sidebar-logo{width:34px;height:34px}.sidebar-btn{font-size:0;justify-content:center;text-align:center;padding:8px}.sidebar-btn .ico{width:20px;height:20px}.sidebar-btn .label-text,.section-label,.history,.sidebar-bottom .profile div{display:none}.sidebar-bottom .profile{justify-content:center;padding:8px 0}
-  #topbar{padding:0 9px}.assistant-sub,.top-actions .top-btn,.top-actions .model-menu{display:none}.assistant-head strong{font-size:12px}
-  .mobile-tabs{display:flex;height:38px;border-bottom:1px solid var(--line);background:#fff;padding:0 8px;gap:3px;align-items:stretch}
-  .mobile-tabs .tab{flex:1;border:0;border-bottom:2px solid transparent;background:#fff;color:#777;font:700 9px monospace;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px}
-  .mobile-tabs .tab.active{color:#111;border-bottom-color:#111;background:#f7f7f7}
-  .tab-ico{width:13px;height:13px;display:inline-flex;align-items:center;justify-content:center}.tab-ico svg{width:13px;height:13px;stroke:currentColor}
-  #chatView{padding:18px 10px 135px}.chat-inner{width:100%}.msg-bubble{font-size:11px}.chat-row.user .msg-bubble{max-width:92%}
-  #controls{padding:8px 10px 10px}.composer-tools{overflow:auto;align-items:flex-start}.key-hint{display:none}#quick{flex-wrap:nowrap}
-}
-@media(max-width:480px){#sidebar{display:none}.welcome{padding-top:60px}.welcome h1{font-size:21px}#input{font-size:13px}.quick{font-size:8px}}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+header{width:100%;max-width:1400px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+h1{margin:0;font-size:20px;letter-spacing:2px;text-transform:uppercase}
+.toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.tool,.theme select{background:#101010;color:var(--fg);border:1px solid var(--fg);padding:7px 10px;cursor:pointer}
+.theme{display:flex;gap:5px;align-items:center}
+#file-input{display:none}
+.mobile-tabs{display:none;width:100%;gap:5px}
+.tab{flex:1;background:#101010;color:var(--muted);border:1px solid var(--border);padding:10px;cursor:pointer}
+.tab.active{color:var(--fg);border-color:var(--fg)}
+#workspace{width:1400px;max-width:100%;height:min(480px,64vh);min-height:310px;display:flex;gap:12px}
+.panel{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
+.label{font-size:11px;color:var(--muted);margin-bottom:5px;text-transform:uppercase}
+canvas,#sandbox,#editor{width:100%;height:100%;min-height:0}
+canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0 0 20px var(--glow)}
+#editor-wrap{position:relative;flex:1;min-height:0;display:flex}#line-numbers{flex:0 0 42px;overflow:hidden;white-space:pre;text-align:right;user-select:none;background:#070707;color:var(--muted);border:2px solid var(--border);border-right:0;padding:12px 7px 12px 3px;font:12px/1.4 "Courier New",monospace;tab-size:4;line-height:1.4}#editor{flex:1;min-width:0;resize:none;background:#0b0b0b;color:var(--fg);border:2px solid var(--border);padding:12px;outline:none;white-space:pre;font:12px/1.4 "Courier New",monospace;tab-size:4}#editor-meta{position:absolute;top:5px;right:8px;z-index:4;font-size:9px;color:var(--muted);pointer-events:none;background:#000b;padding:2px 5px}#autocomplete{display:none;position:absolute;z-index:20;left:10px;top:10px;width:min(390px,calc(100% - 20px));max-height:210px;overflow:auto;background:#050505;border:1px solid var(--fg);box-shadow:0 0 15px var(--glow);font:11px/1.35 "Courier New",monospace}#autocomplete.show{display:block}.ac-item{display:grid;grid-template-columns:1fr auto;gap:8px;padding:6px 8px;cursor:pointer}.ac-item:hover,.ac-item.selected{background:var(--fg);color:#000}.ac-kind{opacity:.7}.ac-item.selected .ac-kind{opacity:.85}.ac-empty{padding:7px 8px;color:var(--muted)}
+#sandbox{display:block;border:2px solid var(--border);background:#000}
+#controls{width:1400px;max-width:100%;display:flex;flex-direction:column;gap:7px}
+#input-row{display:flex;gap:6px}
+#input{flex:1;min-width:0;background:#000;color:var(--fg);border:1px solid var(--fg);padding:12px;font-size:16px}
+#send{background:var(--fg);color:#000;border:0;padding:0 22px;font-weight:bold;cursor:pointer}
+#quick{display:flex;gap:5px;flex-wrap:wrap}
+.quick{background:#101010;color:var(--fg);border:1px solid var(--fg);padding:5px 8px;font-size:10px;cursor:pointer}
+#sources{display:none;max-height:130px;overflow:auto;background:#030303;border-top:1px solid var(--border);padding:7px;font-size:10px}
+#sources.show{display:block}
+.source{margin-bottom:6px;line-height:1.35}.source a{color:var(--fg);word-break:break-all}.source span{color:var(--muted)}
+#review{width:1400px;max-width:100%;display:grid;grid-template-columns:minmax(260px,.7fr) minmax(360px,1.3fr);gap:8px}
+.review-box{background:#030303;border:2px solid var(--border);padding:9px;min-width:0}
+.review-title{color:var(--fg);font-size:11px;text-transform:uppercase;margin-bottom:7px}
+#review-summary{font-size:11px;line-height:1.4;color:var(--muted);margin-bottom:7px}
+#review-list{margin:0;padding-left:18px;font-size:11px;line-height:1.45}
+#review-list li{margin:4px 0}
+#corrected-output{width:100%;height:240px;resize:vertical;background:#080808;color:var(--fg);border:1px solid var(--fg);padding:9px;font:11px/1.4 "Courier New",monospace;white-space:pre;tab-size:4}
+#copy-corrected{margin-top:7px;background:#101010;color:var(--fg);border:1px solid var(--fg);padding:7px 10px;cursor:pointer}
+@media(max-width:900px){#review{grid-template-columns:1fr}}
+#status{font-size:10px;color:var(--muted);min-height:13px}
+#pad{display:none;justify-content:center;gap:10px}
+.pad{background:#202020;color:var(--fg);border:2px solid var(--fg);padding:13px 24px;touch-action:manipulation}
+.drop{border-color:var(--fg)!important;box-shadow:0 0 15px var(--glow)!important}
+@media(max-width:900px){.mobile-tabs{display:flex}.panel{display:none}.panel.visible{display:flex}#workspace{height:58vh;min-height:290px}.toolbar{width:100%}.toolbar>*{flex:1}#pad{display:flex}}
+@media(max-width:520px){h1{font-size:16px}.theme{width:100%}.theme select{flex:1}#input-row{flex-direction:column}#send{min-height:44px}.quick{flex:1;text-align:center}.pad{flex:1}}
 </style>
 </head>
 <body>
-<div id="app-shell">
-<aside id="sidebar">
-  <div class="sidebar-brand"><img class="sidebar-logo" src="./anabel-logo.svg" alt="Anabel"><div><strong>Anabel</strong><span>DEV TERMINAL</span></div></div>
-  <div class="sidebar-actions">
-    <button class="sidebar-btn primary" id="new-chat" type="button" title="Nova conversa"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span><span class="label-text">Nova conversa</span></button>
-    <button class="sidebar-btn" id="open-code" type="button" title="Código"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16"/></svg></span><span class="label-text">Código</span></button>
-    <button class="sidebar-btn" id="open-preview" type="button" title="Preview"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m9 6 8 6-8 6V6z"/></svg></span><span class="label-text">Preview</span></button>
-    <button class="sidebar-btn" id="open-files" type="button" title="Arquivos"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h4l2 2H17.5A2.5 2.5 0 0 1 20 8.5v9A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5z"/></svg></span><span class="label-text">Arquivos</span></button>
-  </div>
-  <div class="section-label">Histórico</div><div class="history" id="history-list"></div>
-  <div class="sidebar-bottom"><div class="profile"><div class="avatar">TF</div><div><strong>Thiago</strong><span>desenvolvimento</span></div></div></div>
-</aside>
-<main id="main">
-<header id="topbar">
-  <div class="assistant-head"><img class="head-logo" src="./anabel-logo.svg" alt="Anabel"><div><strong>ANABEL <span class="online"><span class="online-dot"></span>ONLINE</span></strong><span class="assistant-sub">gemma4:31b-cloud · servidor próprio</span></div></div>
-  <div class="top-actions"><select class="model-menu" id="model-select"><option value="gemma4:31b-cloud">gemma4:31b-cloud</option></select><select class="model-menu" id="theme"><option value="green">claro</option><option value="amber">quente</option></select><button class="top-btn" id="export" type="button">EXPORTAR</button><label class="top-btn" for="file-input">ANEXAR</label><input id="file-input" type="file" multiple accept=".html,.htm,.js,.mjs,.css,.json,.txt,.md,.xml,.svg,.csv,.py,.java,.c,.cpp,.h,.hpp,.cs,.ts,.tsx,.jsx"></div>
+<header>
+<h1>Dev_Anabel Core System</h1>
+<div class="toolbar">
+<label class="tool" for="file-input">📎 ANEXAR</label>
+<input id="file-input" type="file" multiple accept=".html,.htm,.js,.mjs,.css,.json,.txt,.md,.xml,.svg,.csv,.py,.java,.c,.cpp,.h,.hpp,.cs,.ts,.tsx,.jsx">
+<button class="tool" id="export" type="button">💾 EXPORTAR</button>
+<button class="tool" id="undo" type="button">↶ DESFAZER</button>
+<div class="theme"><span>CRT:</span><select id="theme"><option value="green">VERDE</option><option value="amber">ÂMBAR</option></select></div>
+</div>
 </header>
-<div class="mobile-tabs"><button class="tab active" type="button" data-tab="0"><span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 5h16v11H8l-4 4V5z"/></svg></span>CHAT</button><button class="tab" type="button" data-tab="1"><span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16"/></svg></span>CÓDIGO</button><button class="tab" type="button" data-tab="2"><span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m9 6 8 6-8 6V6z"/></svg></span>PREVIEW</button></div>
+<div class="mobile-tabs">
+<button class="tab active" type="button" data-tab="0">Terminal</button>
+<button class="tab" type="button" data-tab="1">Código</button>
+<button class="tab" type="button" data-tab="2">Live View</button>
+</div>
 <main id="workspace">
-<section class="panel visible" id="p0"><canvas id="terminal" width="450" height="450" aria-hidden="true"></canvas><div id="chatView"><div class="chat-inner" id="chat-inner"></div></div><div id="sources"></div></section>
-<section class="panel" id="p1"><div class="label">CÓDIGO</div><div id="editor-wrap"><div id="line-numbers" aria-hidden="true">1</div><textarea id="editor" spellcheck="false" placeholder="# código..."></textarea><div id="editor-meta">AUTO</div><div id="autocomplete" role="listbox"></div></div></section>
-<section class="panel" id="p2"><div class="label">PREVIEW</div><iframe id="sandbox" title="Live View" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe></section>
+<section class="panel visible" id="p0"><div class="label">📟 Terminal CRT</div><canvas id="terminal" width="450" height="450"></canvas><div id="sources"></div></section>
+<section class="panel" id="p1"><div class="label">💻 Professor Python / Código Fonte</div><div id="editor-wrap"><div id="line-numbers" aria-hidden="true">1</div><textarea id="editor" spellcheck="false" placeholder="# Python: escreva aqui e pressione Ctrl+Espaço para sugestões..."></textarea><div id="editor-meta">LINGUAGEM: AUTO · AUTOCOMPLETE: CTRL+ESPAÇO</div><div id="autocomplete" role="listbox" aria-label="Sugestões de código"></div></div></section>
+<section class="panel" id="p2"><div class="label">🚀 Sandbox de Execução</div><iframe id="sandbox" title="Live View" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe></section>
 </main>
-<section id="controls"><div id="composer-wrap"><form id="composer-form" autocomplete="off"><div id="input-row"><input id="input" autocomplete="off" autofocus aria-label="Mensagem para Anabel" placeholder="digite um comando ou pergunta..."><button id="send" class="send-btn" type="submit" aria-label="Enviar mensagem" title="Enviar mensagem"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path d="m4 4 16 8-16 8 3-8-3-8z"/><path d="M7 12h10"/></svg><span>ENVIAR</span></button></div><div class="composer-tools"><div id="quick"><button class="quick" data-command="/analisar" type="button">analisar</button><button class="quick" data-command="/corrigir" type="button">corrigir</button><button class="quick" data-command="/melhorar" type="button">melhorar</button><button class="quick" data-command="/refatorar" type="button">refatorar</button><button class="quick" data-command="/executar" type="button">executar</button><button class="quick" data-command="/fontes" type="button">fontes</button></div><span class="key-hint" aria-label="Atalho de teclado"><kbd>ENTER</kbd><span>enviar</span></span></div><div id="status">pronto</div></div></form></div></section><section id="review" aria-live="polite"><div class="review-box"><div class="review-title">Ideias de melhoria</div><div id="review-summary"></div><ul id="review-list"></ul></div><div class="review-box"><div class="review-title">Código corrigido</div><textarea id="corrected-output" spellcheck="false" readonly></textarea><button id="copy-corrected" type="button">Copiar</button></div></section>
-<section id="pad"></section>
-</main></div>
+<section id="controls">
+<div id="input-row"><input id="input" autocomplete="off" autofocus placeholder="Ex.: Anabel, me dê uma ideia de jogo de estratégia 8-bit"><button id="send" type="button">EXECUTAR</button></div>
+<div id="quick">
+<button class="quick" data-command="/ajuda" type="button">/ajuda</button>
+<button class="quick" data-command="/analisar" type="button">/analisar</button>
+<button class="quick" data-command="/corrigir" type="button">/corrigir</button>
+<button class="quick" data-command="/melhorar" type="button">/melhorar</button>
+<button class="quick" data-command="/refatorar" type="button">/refatorar</button>
+<button class="quick" data-command="/executar" type="button">/executar</button>
+<button class="quick" data-command="/ideias jogo estratégia 8-bit" type="button">/ideias</button>
+<button class="quick" data-command="/fontes" type="button">/fontes</button>
+</div>
+<div id="status"></div>
+</section>
+<section id="review" aria-live="polite">
+<div class="review-box">
+<div class="review-title">🔎 Ideias de melhoria</div>
+<div id="review-summary">Analise ou corrija um código para gerar recomendações técnicas.</div>
+<ul id="review-list"></ul>
+</div>
+<div class="review-box">
+<div class="review-title">🛠️ Código corrigido</div>
+<textarea id="corrected-output" spellcheck="false" readonly placeholder="O código corrigido aparecerá aqui."></textarea>
+<button id="copy-corrected" type="button">COPIAR CÓDIGO</button>
+</div>
+</section>
+<section id="pad"><button class="pad" id="left" type="button">◀ ESQ</button><button class="pad" id="fire" type="button">FOGO</button><button class="pad" id="right" type="button">DIR ▶</button></section>
 <script src="./firebase-config.js"></script>
 <script type="module" src="./firebase-ai.js"></script>
 <script>
@@ -104,7 +112,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   const $=(s,r=document)=>r.querySelector(s);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
   const canvas=$("#terminal"),ctx=canvas.getContext("2d",{alpha:false});
-  const editor=$("#editor"),sandbox=$("#sandbox"),input=$("#input"),send=$("#send"),composerForm=$("#composer-form");
+  const editor=$("#editor"),sandbox=$("#sandbox"),input=$("#input"),send=$("#send");
   const fileInput=$("#file-input"),sources=$("#sources"),status=$("#status");
   const reviewSummary=$("#review-summary"),reviewList=$("#review-list"),correctedOutput=$("#corrected-output"),copyCorrected=$("#copy-corrected");
   const autocomplete=$("#autocomplete"),editorMeta=$("#editor-meta"),lineNumbers=$("#line-numbers");
@@ -114,8 +122,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     theme:"green",color:"#00ff33",busy:false,queued:false,sandboxUrl:"",language:"auto",
     history:[
       "ANABEL: sistema iniciado.",
-      "ANABEL: servidor Anabel ativo; Gemma 4 conectado.",
-      "ANABEL: chat, código, pesquisa e sandbox prontos."
+      "ANABEL: núcleo local ativo; IA Gemini via Firebase preparada.",
+      "ANABEL: conhecimento, regras, pesquisa e ferramentas ativas."
     ],
     sourceList:[],snapshots:[],ideas:[],selectedIdea:null,pendingAction:null,
     autonomous:{enabled:true,lastQuery:"",lastReason:"",candidateCount:0,selected:"",score:0,lastAt:0,alternatives:[],plan:null},
@@ -124,25 +132,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 
   const norm=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
   const esc=v=>String(v).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c]));
-  function log(v){
-    state.history.push(String(v));
-    // Atualiza o chat imediatamente para que cada mensagem recebida fique visível,
-    // mesmo quando o navegador atrasa ou falha no repaint via requestAnimationFrame.
-    renderChat();
-    drawLater();
-  }
-  function drawLater(){
-    if(state.queued)return;
-    const repaint=()=>{
-      state.queued=false;
-      try{draw();}catch(error){console.error("Anabel render:",error);}
-    };
-    if(typeof window.requestAnimationFrame==="function"){
-      state.queued=requestAnimationFrame(repaint);
-    }else{
-      state.queued=setTimeout(repaint,0);
-    }
-  }
+  function log(v){state.history.push(String(v));drawLater();}
+  function drawLater(){if(state.queued)return;state.queued=requestAnimationFrame(()=>{state.queued=false;draw();});}
   function wrapTerminalText(text,chars){
     const lines=[];
     for(const rawLine of String(text??"").split(/\r?\n/)){
@@ -160,40 +151,20 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     return lines;
   }
 
-  function renderChat(){
-    const chat=$("#chat-inner"),view=$("#chatView");
-    if(!chat||!view)return;
-    chat.innerHTML="";
-    const entries=state.history.map(x=>String(x||"").trim()).filter(Boolean);
-    let count=0;
-    const add=(role,text)=>{
-      const row=document.createElement("div");row.className="chat-row"+(role==="user"?" user":"");
-      if(role!=="user"){
-        const av=document.createElement("div");av.className="msg-avatar";
-        const im=document.createElement("img");im.src="./anabel-logo.svg";im.alt="";av.appendChild(im);row.appendChild(av);
-      }
-      const bubble=document.createElement("div");bubble.className="msg-bubble";
-      const label=document.createElement("div");label.className="msg-label";label.textContent=role==="user"?"Você":"Anabel";
-      const body=document.createElement("div");body.className="plain";body.textContent=text;
-      bubble.append(label,body);row.appendChild(bubble);chat.appendChild(row);count++;
-    };
-    for(const raw of entries){
-      if(/^DEV:\s*/i.test(raw)){add("user",raw.replace(/^DEV:\s*/i,"").trim());continue;}
-      if(/^ANABEL\s*\[[^\]]+\]:\s*/i.test(raw)){add("assistant",raw.replace(/^ANABEL\s*\[[^\]]+\]:\s*/i,"").trim());continue;}
-      if(/^ANABEL:\s*/i.test(raw)){add("assistant",raw.replace(/^ANABEL:\s*/i,"").trim());continue;}
-      if(/^RESPOSTA SIMPLIFICADA:\s*/i.test(raw)){add("assistant",raw.replace(/^RESPOSTA SIMPLIFICADA:\s*/i,"").trim());continue;}
-      if(/^(EXPLICAÇÃO|EXEMPLO|DICA|ANÁLISE|ERRO|FALHA|PROFESSOR PYTHON|IDEIA \d+|COMANDOS|SELFTEST):/i.test(raw)){add("assistant",raw);continue;}
-    }
-    if(!count){
-      const w=document.createElement("div");w.className="welcome";
-      const im=document.createElement("img");im.className="welcome-logo";im.src="./anabel-logo.svg";im.alt="Anabel";
-      const h=document.createElement("h1");h.textContent="Como posso ajudar?";
-      const p=document.createElement("p");p.textContent="programação, código, jogos, sites e ideias";
-      w.append(im,h,p);chat.appendChild(w);
-    }
-    requestAnimationFrame(()=>{view.scrollTop=view.scrollHeight;});
+  function draw(){
+    const r=canvas.getBoundingClientRect(),d=Math.max(1,Math.min(2,devicePixelRatio||1));
+    const w=Math.max(1,Math.floor((r.width||450)*d)),h=Math.max(1,Math.floor((r.height||450)*d));
+    if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
+    const cw=r.width||450,ch=r.height||450;
+    ctx.setTransform(d,0,0,d,0,0);ctx.fillStyle="#000";ctx.fillRect(0,0,cw,ch);
+    ctx.fillStyle=state.color;ctx.shadowColor=state.color;ctx.shadowBlur=3;ctx.font="12px monospace";ctx.textBaseline="top";
+    const lh=17,max=Math.max(1,Math.floor((ch-12)/lh)),chars=Math.max(30,Math.floor((cw-18)/7.1));
+    const terminalLines=[];
+    for(const entry of state.history.slice(-120))terminalLines.push(...wrapTerminalText(entry,chars));
+    const start=Math.max(0,terminalLines.length-max);
+    for(let i=start;i<terminalLines.length;i++)ctx.fillText(terminalLines[i],9,7+(i-start)*lh);
+    ctx.shadowBlur=0;
   }
-  function draw(){renderChat();}
   function switchTab(i){
     i=Number(i);if(![0,1,2].includes(i))return;
     qsa(".tab").forEach((b,n)=>{b.classList.toggle("active",n===i);b.setAttribute("aria-selected",String(n===i));});
@@ -1728,28 +1699,124 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   }
 
   async function sendCommand(){
-    if(state.busy)return;
-    const text=input.value.trim();
-    if(!text)return;
+  console.log("TESTE EXECUTAR");
+
+  if(state.busy){
+    console.log("TESTE EXECUTAR: estado busy = true");
+    return;
+  }
+
+  const text=input.value.trim();
+
+  console.log("TESTE EXECUTAR: comando =", text);
+  console.log(
+    "TESTE EXECUTAR: código no editor =",
+    editor.value.length,
+    "caracteres"
+  );
+
+  if(!text){
+
+    console.log("TESTE EXECUTAR: campo de comando vazio");
+
+    if(!editor.value.trim()){
+      console.log("TESTE EXECUTAR: editor vazio");
+
+      log(
+        "ANABEL: digite um comando ou coloque código no editor para executar."
+      );
+
+      return;
+    }
+
+    console.log(
+      "TESTE EXECUTAR: executando código do editor"
+    );
 
     state.busy=true;
     send.disabled=true;
-    input.value="";
-    log("DEV: "+text);
-    status.textContent="enviando para a Anabel…";
+
+    log("DEV: execução direta do código do editor.");
 
     try{
-      await handleCommand(text);
-    }catch(error){
-      console.error("Dev_Anabel:",error);
-      log("ERRO: "+(error?.message||"falha inesperada"));
-      status.textContent="erro ao executar o comando";
+
+      console.log("TESTE EXECUTAR: chamando run()");
+
+      run(editor.value);
+
+      console.log("TESTE EXECUTAR: run() terminou");
+
+    }catch(e){
+
+      console.error(
+        "TESTE EXECUTAR: erro em run()",
+        e
+      );
+
+      console.error("Dev_Anabel:",e);
+
+      log(
+        "ERRO: "+
+        (e.message||"falha inesperada")
+      );
+
     }finally{
+
+      console.log(
+        "TESTE EXECUTAR: finalizando execução"
+      );
+
       state.busy=false;
       send.disabled=false;
       input.focus();
     }
+
+    return;
   }
+
+  state.busy=true;
+  send.disabled=true;
+  input.value="";
+
+  log("DEV: "+text);
+
+  console.log(
+    "TESTE EXECUTAR: enviando comando para handleCommand()"
+  );
+
+  try{
+
+    await handleCommand(text);
+
+    console.log(
+      "TESTE EXECUTAR: handleCommand() terminou"
+    );
+
+  }catch(e){
+
+    console.error(
+      "TESTE EXECUTAR: erro em handleCommand()",
+      e
+    );
+
+    console.error("Dev_Anabel:",e);
+
+    log(
+      "ERRO: "+
+      (e.message||"falha inesperada")
+    );
+
+  }finally{
+
+    console.log(
+      "TESTE EXECUTAR: liberando botão"
+    );
+
+    state.busy=false;
+    send.disabled=false;
+    input.focus();
+  }
+}
 
   window.DevAnabel={
     state,
@@ -1792,45 +1859,15 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   setLanguage("auto");
   updateLineNumbers();
   restoreSession();
-  renderChat();
-  $("#new-chat")?.addEventListener("click",()=>{state.history=["ANABEL: nova conversa iniciada."];state.sourceList=[];state.pendingAction=null;renderChat();input.value="";input.focus();});
-  $("#open-code")?.addEventListener("click",()=>switchTab(1));
-  $("#open-preview")?.addEventListener("click",()=>switchTab(2));
-  $("#open-projects")?.addEventListener("click",()=>log("ANABEL: projetos serão integrados aqui."));
-  $("#open-files")?.addEventListener("click",()=>fileInput.click());
-  $("#open-tools")?.addEventListener("click",()=>log("ANABEL: ferramentas disponíveis nos atalhos."));
-  $("#model-select")?.addEventListener("change",e=>status.textContent="Modelo: "+e.target.value);
-  composerForm.addEventListener("submit",e=>{
-    e.preventDefault();
-    sendCommand();
-  });
-  send.addEventListener("click",e=>{
-    e.preventDefault();
-    composerForm.requestSubmit();
-  });
+  send.addEventListener("click",sendCommand);
   input.addEventListener("keydown",e=>{
     if(e.isComposing)return;
     if(e.key==="Enter"||e.code==="NumpadEnter"){
       e.preventDefault();
       e.stopPropagation();
-      composerForm.requestSubmit();
+      if(!e.repeat)sendCommand();
     }
   });
-
-  async function checkAnabelConnection(){
-    try{
-      const controller=new AbortController();
-      const timer=setTimeout(()=>controller.abort(),7000);
-      const healthEndpoint=ANABEL_API_ENDPOINT.replace("/api/chat","/health");
-      const r=await fetch(healthEndpoint,{method:"GET",signal:controller.signal});
-      clearTimeout(timer);
-      if(!r.ok)throw new Error("HTTP "+r.status);
-      status.textContent="servidor Anabel online · Gemma 4";
-    }catch(e){
-      status.textContent="servidor Anabel indisponível · verifique o cloudflared";
-    }
-  }
-  checkAnabelConnection();
 
   qsa(".quick").forEach(b=>b.addEventListener("click",()=>{input.value=b.dataset.command;sendCommand();}));
   copyCorrected.addEventListener("click",async()=>{
@@ -1849,7 +1886,6 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   if(new URLSearchParams(location.search).get("selftest")==="1"){
     const checks=[
       ["DOM",!!canvas&&!!editor&&!!sandbox&&!!input&&!!send],
-      ["Enter: listener",typeof sendCommand==="function"],
       ["Canvas",!!ctx],
       ["Intent: análise",intent("Anabel analise meu codigo").type==="analyze"],
       ["Intent: pergunta",intent("como criar um jogo").type==="question"],

@@ -1520,10 +1520,39 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     return false;
   }
 
+  const ANABEL_API_ENDPOINT="https://alive-exotic-juice-never.trycloudflare.com/api/chat";
   const AI_ENDPOINT=location.hostname.endsWith(".vercel.app") ? "/api/gemini" : "https://dev-anabel.vercel.app/api/gemini";
 
   async function callRemoteAssistant(query){
     const history=state.history.slice(-12).map((line,i)=>({role:i%2===0?"user":"model",parts:[{text:String(line)}]}));
+
+    // 1) Anabel no servidor próprio: Gemma/SLMs via API.
+    try{
+      status.textContent="IA: conectando ao servidor Anabel…";
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),30000);
+      let response;
+      try{
+        response=await fetch(ANABEL_API_ENDPOINT,{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({prompt:String(query).slice(0,12000)})
+          ,signal:controller.signal
+        });
+      }finally{
+        clearTimeout(timer);
+      }
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok||!data.text)throw new Error(data.error||"servidor Anabel indisponível");
+      log("ANABEL [SERVIDOR/"+String(data.model||"SLM").toUpperCase()+"]: "+data.text);
+      status.textContent="IA ativa: servidor Anabel · "+String(data.model||"SLM");
+      return true;
+    }catch(error){
+      const detail=error instanceof Error ? error.message : String(error || "erro desconhecido");
+      log("ANABEL: servidor próprio falhou: "+detail);
+    }
+
+    // 2) Firebase Gemini permanece como fallback.
     try{
       if(window.AnabelFirebaseAI?.configured){
         status.textContent="IA: conectando ao Gemini…";
@@ -1537,6 +1566,8 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
       const detail=error instanceof Error ? error.message : String(error || "erro desconhecido");
       log("ANABEL: Firebase Gemini falhou: "+detail);
     }
+
+    // 3) Gateway Vercel existente como último fallback remoto.
     try{
       status.textContent="IA: gateway de reserva…";
       const response=await fetch(AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:String(query).slice(0,12000),history})});
@@ -1548,7 +1579,7 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     }catch(error){
       const detail=error instanceof Error ? error.message : String(error || "erro desconhecido");
       log("ANABEL: IA remota indisponível: "+detail);
-      status.textContent="Motor local ativo."; 
+      status.textContent="Motor local ativo.";
       return false;
     }
   }

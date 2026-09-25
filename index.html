@@ -17,8 +17,11 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .sidebar-brand{display:flex;align-items:center;gap:10px;padding:4px 6px 18px;border-bottom:1px solid #333}
 .sidebar-logo{width:38px;height:38px;border-radius:8px;background:#fff}.sidebar-brand strong{display:block;font-size:18px}.sidebar-brand span{display:block;color:#aaa;font-size:9px;margin-top:3px}
 .sidebar-actions{display:flex;flex-direction:column;gap:4px;padding-top:12px}
-.sidebar-btn{border:1px solid transparent;background:transparent;color:#eee;text-align:left;padding:9px 8px;border-radius:5px;cursor:pointer;font-size:12px}
+.sidebar-btn{border:1px solid transparent;background:transparent;color:#eee;text-align:left;padding:9px 8px;border-radius:5px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:9px;transition:background .15s,color .15s,transform .08s}
 .sidebar-btn:hover,.sidebar-btn.primary{background:#fff;color:#111}
+.sidebar-btn:active{transform:translateY(1px)}
+.ico{width:20px;height:20px;flex:0 0 20px;display:grid;place-items:center}
+.ico svg{width:18px;height:18px;display:block;stroke:currentColor}
 .section-label{padding:18px 8px 7px;color:#999;font-size:9px;text-transform:uppercase}.history{flex:1;overflow:auto}.history-item{display:block;width:100%;border:0;background:transparent;color:#bbb;text-align:left;padding:6px 8px;border-radius:4px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px}.history-item:hover{background:#222;color:#fff}
 .sidebar-bottom{border-top:1px solid #333;padding-top:9px}.profile{display:flex;align-items:center;gap:8px;padding:7px 6px}.avatar{width:26px;height:26px;border:1px solid #777;border-radius:50%;display:grid;place-items:center;font-size:9px}.profile strong{font-size:11px}.profile span{display:block;color:#999;font-size:8px;margin-top:2px}
 #main{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;background:#fff}
@@ -40,19 +43,27 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 #input-row{display:flex;gap:6px;padding:6px;background:#fff;border:1px solid #111;border-radius:5px;box-shadow:2px 2px 0 #111}
 #input{flex:1;border:0;outline:none;background:#fff;color:#111;min-height:36px;padding:7px;font-size:12px}
 #input::placeholder{color:#999}
-#send{width:68px;border:1px solid #111;background:#111;color:#fff;border-radius:3px;font-size:10px;cursor:pointer}
-#send:hover{background:#333}
+#send{min-width:84px;height:36px;border:1px solid #111;background:#111;color:#fff;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:background .15s,box-shadow .15s,transform .08s,opacity .15s}
+#send svg{width:15px;height:15px;stroke:currentColor}
+#send:hover{background:#222;box-shadow:0 0 0 2px #e2e2e2}
+#send:active{transform:translateY(1px);box-shadow:none}
+#send:disabled{opacity:.55;cursor:wait;box-shadow:none}
 .composer-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:7px}
-#quick{display:flex;gap:4px;flex-wrap:wrap}.quick{background:#fff;border:1px solid var(--line);color:#333;border-radius:3px;padding:4px 7px;font-size:9px;cursor:pointer}.quick:hover{border-color:#111;background:#f0f0f0}
-.composer-hint{font-size:8px;color:#999}#status{min-height:12px;padding-top:5px;font-size:9px;color:#555}
+#quick{display:flex;gap:4px;flex-wrap:wrap}.quick{background:#fff;border:1px solid var(--line);color:#333;border-radius:3px;padding:4px 7px;font-size:9px;cursor:pointer;transition:background .15s,border-color .15s}.quick:hover{border-color:#111;background:#f0f0f0}
+.key-hint{display:inline-flex;align-items:center;gap:5px;font-size:8px;color:#777;white-space:nowrap}.key-hint kbd{min-width:38px;padding:3px 5px;border:1px solid #bbb;border-bottom-width:2px;border-radius:3px;background:#f6f6f6;color:#222;font:700 8px/1 monospace;text-align:center}
+#status{min-height:12px;padding-top:5px;font-size:9px;color:#555}
 .panel .label{height:40px;flex:0 0 40px;display:flex;align-items:center;padding:0 11px;border-bottom:1px solid var(--line);font-size:10px;font-weight:700}.panel #editor-wrap{position:relative;flex:1;display:flex}#line-numbers{flex:0 0 38px;background:#f1f1f1;color:#777;padding:10px 6px;text-align:right;font:11px/1.5 monospace;overflow:hidden}#editor{flex:1;border:0;background:#fff;color:#111;padding:10px;outline:none;font:11px/1.5 monospace;resize:none}#editor-meta{position:absolute;right:8px;top:6px;color:#777;font-size:8px}#autocomplete{display:none;position:absolute;left:45px;top:7px;z-index:20;background:#fff;border:1px solid #111;max-height:180px;overflow:auto;width:320px}#autocomplete.show{display:block}#sandbox{border:0;flex:1;width:100%;background:#fff}
 #review,#pad{display:none}
 .mobile-tabs{display:none}
 @media(max-width:760px){
-  #sidebar{width:54px;flex-basis:54px;padding:10px 5px}.sidebar-brand{justify-content:center;padding:0 0 12px}.sidebar-brand>div{display:none}.sidebar-logo{width:34px;height:34px}.sidebar-btn{font-size:0;text-align:center;padding:8px}.sidebar-btn .ico{font-size:15px}.sidebar-btn .label-text,.section-label,.history,.sidebar-bottom .profile div{display:none}.sidebar-bottom .profile{justify-content:center;padding:8px 0}
+  #sidebar{width:54px;flex-basis:54px;padding:10px 5px}.sidebar-brand{justify-content:center;padding:0 0 12px}.sidebar-brand>div{display:none}.sidebar-logo{width:34px;height:34px}.sidebar-btn{font-size:0;justify-content:center;text-align:center;padding:8px}.sidebar-btn .ico{width:20px;height:20px}.sidebar-btn .label-text,.section-label,.history,.sidebar-bottom .profile div{display:none}.sidebar-bottom .profile{justify-content:center;padding:8px 0}
   #topbar{padding:0 9px}.assistant-sub,.top-actions .top-btn,.top-actions .model-menu{display:none}.assistant-head strong{font-size:12px}
+  .mobile-tabs{display:flex;height:38px;border-bottom:1px solid var(--line);background:#fff;padding:0 8px;gap:3px;align-items:stretch}
+  .mobile-tabs .tab{flex:1;border:0;border-bottom:2px solid transparent;background:#fff;color:#777;font:700 9px monospace;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px}
+  .mobile-tabs .tab.active{color:#111;border-bottom-color:#111;background:#f7f7f7}
+  .tab-ico{width:13px;height:13px;display:inline-flex;align-items:center;justify-content:center}.tab-ico svg{width:13px;height:13px;stroke:currentColor}
   #chatView{padding:18px 10px 135px}.chat-inner{width:100%}.msg-bubble{font-size:11px}.chat-row.user .msg-bubble{max-width:92%}
-  #controls{padding:8px 10px 10px}.composer-tools{overflow:auto;align-items:flex-start}.composer-hint{display:none}#quick{flex-wrap:nowrap}
+  #controls{padding:8px 10px 10px}.composer-tools{overflow:auto;align-items:flex-start}.key-hint{display:none}#quick{flex-wrap:nowrap}
 }
 @media(max-width:480px){#sidebar{display:none}.welcome{padding-top:60px}.welcome h1{font-size:21px}#input{font-size:13px}.quick{font-size:8px}}
 </style>
@@ -62,10 +73,10 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <aside id="sidebar">
   <div class="sidebar-brand"><img class="sidebar-logo" src="./anabel-logo.svg" alt="Anabel"><div><strong>Anabel</strong><span>DEV TERMINAL</span></div></div>
   <div class="sidebar-actions">
-    <button class="sidebar-btn primary" id="new-chat" type="button"><span class="ico">+</span><span class="label-text">Nova conversa</span></button>
-    <button class="sidebar-btn" id="open-code" type="button"><span class="ico">&lt;/&gt;</span><span class="label-text">Código</span></button>
-    <button class="sidebar-btn" id="open-preview" type="button"><span class="ico">&gt;</span><span class="label-text">Preview</span></button>
-    <button class="sidebar-btn" id="open-files" type="button"><span class="ico">#</span><span class="label-text">Arquivos</span></button>
+    <button class="sidebar-btn primary" id="new-chat" type="button" title="Nova conversa"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span><span class="label-text">Nova conversa</span></button>
+    <button class="sidebar-btn" id="open-code" type="button" title="Código"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16"/></svg></span><span class="label-text">Código</span></button>
+    <button class="sidebar-btn" id="open-preview" type="button" title="Preview"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m9 6 8 6-8 6V6z"/></svg></span><span class="label-text">Preview</span></button>
+    <button class="sidebar-btn" id="open-files" type="button" title="Arquivos"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h4l2 2H17.5A2.5 2.5 0 0 1 20 8.5v9A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5z"/></svg></span><span class="label-text">Arquivos</span></button>
   </div>
   <div class="section-label">Histórico</div><div class="history" id="history-list"></div>
   <div class="sidebar-bottom"><div class="profile"><div class="avatar">TF</div><div><strong>Thiago</strong><span>desenvolvimento</span></div></div></div>
@@ -75,13 +86,13 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   <div class="assistant-head"><img class="head-logo" src="./anabel-logo.svg" alt="Anabel"><div><strong>ANABEL <span class="online"><span class="online-dot"></span>ONLINE</span></strong><span class="assistant-sub">gemma4:31b-cloud · servidor próprio</span></div></div>
   <div class="top-actions"><select class="model-menu" id="model-select"><option value="gemma4:31b-cloud">gemma4:31b-cloud</option></select><select class="model-menu" id="theme"><option value="green">claro</option><option value="amber">quente</option></select><button class="top-btn" id="export" type="button">EXPORTAR</button><label class="top-btn" for="file-input">ANEXAR</label><input id="file-input" type="file" multiple accept=".html,.htm,.js,.mjs,.css,.json,.txt,.md,.xml,.svg,.csv,.py,.java,.c,.cpp,.h,.hpp,.cs,.ts,.tsx,.jsx"></div>
 </header>
-<div class="mobile-tabs"><button class="tab active" type="button" data-tab="0">CHAT</button><button class="tab" type="button" data-tab="1">CÓDIGO</button><button class="tab" type="button" data-tab="2">PREVIEW</button></div>
+<div class="mobile-tabs"><button class="tab active" type="button" data-tab="0"><span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 5h16v11H8l-4 4V5z"/></svg></span>CHAT</button><button class="tab" type="button" data-tab="1"><span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16"/></svg></span>CÓDIGO</button><button class="tab" type="button" data-tab="2"><span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m9 6 8 6-8 6V6z"/></svg></span>PREVIEW</button></div>
 <main id="workspace">
 <section class="panel visible" id="p0"><canvas id="terminal" width="450" height="450" aria-hidden="true"></canvas><div id="chatView"><div class="chat-inner" id="chat-inner"></div></div><div id="sources"></div></section>
 <section class="panel" id="p1"><div class="label">CÓDIGO</div><div id="editor-wrap"><div id="line-numbers" aria-hidden="true">1</div><textarea id="editor" spellcheck="false" placeholder="# código..."></textarea><div id="editor-meta">AUTO</div><div id="autocomplete" role="listbox"></div></div></section>
 <section class="panel" id="p2"><div class="label">PREVIEW</div><iframe id="sandbox" title="Live View" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe></section>
 </main>
-<section id="controls"><div id="composer-wrap"><div id="input-row"><input id="input" autocomplete="off" autofocus placeholder="digite um comando ou pergunta..."><button id="send" type="button">ENVIAR</button></div><div class="composer-tools"><div id="quick"><button class="quick" data-command="/analisar" type="button">analisar</button><button class="quick" data-command="/corrigir" type="button">corrigir</button><button class="quick" data-command="/melhorar" type="button">melhorar</button><button class="quick" data-command="/refatorar" type="button">refatorar</button><button class="quick" data-command="/executar" type="button">executar</button><button class="quick" data-command="/fontes" type="button">fontes</button></div><span class="composer-hint">enter = enviar</span></div><div id="status">pronto</div></div></section>
+<section id="controls"><div id="composer-wrap"><div id="input-row"><input id="input" autocomplete="off" autofocus aria-label="Mensagem para Anabel" placeholder="digite um comando ou pergunta..."><button id="send" class="send-btn" type="button" aria-label="Enviar mensagem" title="Enviar mensagem"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true"><path d="m4 4 16 8-16 8 3-8-3-8z"/><path d="M7 12h10"/></svg><span>ENVIAR</span></button></div><div class="composer-tools"><div id="quick"><button class="quick" data-command="/analisar" type="button">analisar</button><button class="quick" data-command="/corrigir" type="button">corrigir</button><button class="quick" data-command="/melhorar" type="button">melhorar</button><button class="quick" data-command="/refatorar" type="button">refatorar</button><button class="quick" data-command="/executar" type="button">executar</button><button class="quick" data-command="/fontes" type="button">fontes</button></div><span class="key-hint" aria-label="Atalho de teclado"><kbd>ENTER</kbd><span>enviar</span></span></div><div id="status">pronto</div></div></section>
 <section id="review" aria-live="polite"><div class="review-box"><div class="review-title">Ideias de melhoria</div><div id="review-summary"></div><ul id="review-list"></ul></div><div class="review-box"><div class="review-title">Código corrigido</div><textarea id="corrected-output" spellcheck="false" readonly></textarea><button id="copy-corrected" type="button">Copiar</button></div></section>
 <section id="pad"></section>
 </main></div>
@@ -1815,6 +1826,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   if(new URLSearchParams(location.search).get("selftest")==="1"){
     const checks=[
       ["DOM",!!canvas&&!!editor&&!!sandbox&&!!input&&!!send],
+      ["Enter: listener",typeof sendCommand==="function"],
       ["Canvas",!!ctx],
       ["Intent: análise",intent("Anabel analise meu codigo").type==="analyze"],
       ["Intent: pergunta",intent("como criar um jogo").type==="question"],

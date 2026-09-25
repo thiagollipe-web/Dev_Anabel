@@ -110,8 +110,6 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
 </div>
 </section>
 <section id="pad"><button class="pad" id="left" type="button">◀ ESQ</button><button class="pad" id="fire" type="button">FOGO</button><button class="pad" id="right" type="button">DIR ▶</button></section>
-<script src="./firebase-config.js"></script>
-<script type="module" src="./firebase-ai.js"></script>
 <script>
 
 "use strict";
@@ -1532,94 +1530,48 @@ canvas{display:block;background:#000;border:2px solid var(--border);box-shadow:0
     return false;
   }
 
+  // ÚNICA IA REMOTA: backend da Anabel na Oracle Cloud.
   const ANABEL_API_ENDPOINT="https://stuff-rna-hence-municipal.trycloudflare.com/api/chat";
-  const AI_ENDPOINT=location.hostname.endsWith(".vercel.app") ? "/api/gemini" : "https://dev-anabel.vercel.app/api/gemini";
 
   async function callRemoteAssistant(query){
-    const history=state.history.slice(-12).map((line,i)=>({role:i%2===0?"user":"model",parts:[{text:String(line)}]}));
-
-    // 1) Anabel no servidor próprio: Gemma/SLMs via API.
     try{
-      status.textContent="IA: processando no servidor Anabel…";
+      status.textContent="IA: processando na Oracle…";
       const controller=new AbortController();
-      // Prompts longos e código podem levar mais tempo no Gemma Cloud.
       const timer=setTimeout(()=>controller.abort(),120000);
       let response;
       try{
         response=await fetch(ANABEL_API_ENDPOINT,{
           method:"POST",
           headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({prompt:String(query).slice(0,12000)})
-          ,signal:controller.signal
+          body:JSON.stringify({prompt:String(query).slice(0,12000)}),
+          signal:controller.signal
         });
       }finally{
         clearTimeout(timer);
       }
-      const data=await response.json().catch(()=>({}));
-      if(!response.ok||!data.text)throw new Error(data.error||"servidor Anabel indisponível");
-      log("ANABEL [SERVIDOR/"+String(data.model||"SLM").toUpperCase()+"]: "+data.text);
-      status.textContent="IA ativa: servidor Anabel · "+String(data.model||"SLM");
-      return true;
-    }catch(error){
-      const detail=error instanceof Error ? error.message : String(error || "erro desconhecido");
-      log("ANABEL: servidor próprio falhou: "+detail);
-      status.textContent="Falha no servidor Anabel; tentando motor de reserva…";
-    }
 
-    // 2) Firebase Gemini permanece como fallback.
-    try{
-      if(window.AnabelFirebaseAI?.configured){
-        status.textContent="IA: conectando ao Gemini…";
-        await window.AnabelFirebaseReady;
-        const data=await window.AnabelFirebaseAI.generate(String(query).slice(0,12000),history);
-        log("ANABEL [GEMINI/FIREBASE]: "+data.text);
-        status.textContent="IA ativa: Gemini via Firebase";
-        return true;
+      const data=await response.json().catch(()=>({}));
+
+      if(!response.ok||!data.text){
+        throw new Error(data.error||("HTTP "+response.status));
       }
-    }catch(error){
-      const detail=error instanceof Error ? error.message : String(error || "erro desconhecido");
-      log("ANABEL: Firebase Gemini falhou: "+detail);
-    }
 
-    // 3) Gateway Vercel existente como último fallback remoto.
-    try{
-      status.textContent="IA: gateway de reserva…";
-      const response=await fetch(AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:String(query).slice(0,12000),history})});
-      const data=await response.json().catch(()=>({}));
-      if(!response.ok||!data.text)throw new Error(data.error||"gateway indisponível");
-      log("ANABEL ["+String(data.provider||"IA").toUpperCase()+"]: "+data.text);
-      status.textContent="IA ativa: "+String(data.provider||"remota");
+      log("ANABEL [ORACLE/"+String(data.model||"SLM").toUpperCase()+"]: "+data.text);
+      status.textContent="IA ativa · Oracle Cloud · "+String(data.model||"SLM");
       return true;
     }catch(error){
-      const detail=error instanceof Error ? error.message : String(error || "erro desconhecido");
-      log("ANABEL: IA remota indisponível: "+detail);
-      status.textContent="Motor local ativo.";
+      const detail=error instanceof Error?error.message:String(error||"erro desconhecido");
+      log("ANABEL: falha no servidor Oracle: "+detail);
+      status.textContent="Servidor Oracle indisponível.";
       return false;
     }
   }
 
   async function smartAnswer(query){
-    // API remota é a IA principal; motor local permanece como fallback.
-    if(await callRemoteAssistant(query))return;
-    if(await smartPythonAnswer(query))return;
-    const item=known(query);
-    if(item){
-      log("ANABEL: "+item.title);
-      log("EXPLICAÇÃO: "+item.text);
-      log("EXEMPLO: "+item.example);
-      log("DICA: "+item.tip);
-      addSource({kind:"LOCAL",title:item.source,url:item.url,note:"Referência técnica da base local."});
-      return;
-    }
-    const found=await research(query);
-    if(!found.length){
-      log("ANABEL: não encontrei material suficiente para responder com segurança.");
-      return;
-    }
-    let detail=found[0].note||found[0].title;
-    if(/\b(the|this|function|game|library|data|how|what)\b/i.test(detail))detail=await translateSimple(detail);
-    log("RESPOSTA SIMPLIFICADA: "+detail);
-    log("DICA: a referência está na área FONTES; consulte o original para contexto completo.");
+    // Perguntas em linguagem natural usam exclusivamente a IA da Oracle.
+    const ok=await callRemoteAssistant(query);
+    if(ok)return;
+    log("ANABEL: a resposta não foi processada porque o servidor Oracle está indisponível.");
   }
 
   function intent(text){

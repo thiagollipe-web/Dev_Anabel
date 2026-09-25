@@ -1774,13 +1774,21 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   $("#open-tools")?.addEventListener("click",()=>log("ANABEL: ferramentas disponíveis nos atalhos."));
   $("#model-select")?.addEventListener("change",e=>status.textContent="Modelo: "+e.target.value);
   send.addEventListener("click",sendCommand);
-  input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();sendCommand();}});
+  input.addEventListener("keydown",e=>{
+    if(e.isComposing)return;
+    if(e.key==="Enter"||e.code==="NumpadEnter"){
+      e.preventDefault();
+      e.stopPropagation();
+      sendCommand();
+    }
+  });
 
   async function checkAnabelConnection(){
     try{
       const controller=new AbortController();
       const timer=setTimeout(()=>controller.abort(),7000);
-      const r=await fetch(ANABEL_API_ENDPOINT.replace(/\\/api\\/chat$/, "/health"),{method:"GET",signal:controller.signal});
+      const healthEndpoint=ANABEL_API_ENDPOINT.replace("/api/chat","/health");
+      const r=await fetch(healthEndpoint,{method:"GET",signal:controller.signal});
       clearTimeout(timer);
       if(!r.ok)throw new Error("HTTP "+r.status);
       status.textContent="servidor Anabel online · Gemma 4";

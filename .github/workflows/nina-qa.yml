@@ -19,3 +19,20 @@ jobs:
           node-version: '22'
       - run: node --test nina-render/test/*.test.cjs
       - run: node --check nina-render/tools.js && node --check nina-render/storage.js && node --check nina-render/spreadsheet-worker.js
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+        working-directory: nina-render
+      - run: npx playwright install --with-deps chromium
+        working-directory: nina-render
+      - run: npm run test:e2e
+        working-directory: nina-render

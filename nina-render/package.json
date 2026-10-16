@@ -1,0 +1,10 @@
+{
+  "name": "nina-qa",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/*.test.cjs",
+    "test:e2e": "node --test test/e2e/*.test.cjs"
+  },
+  "devDependencies": { "playwright": "1.62.1" }
+}

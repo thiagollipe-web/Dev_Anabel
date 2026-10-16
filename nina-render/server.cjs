@@ -16,6 +16,23 @@ const toolsPage = fs.readFileSync(path.join(__dirname, "tools.js"));
 const page = fs.readFileSync(path.join(__dirname, "index.html"));
 const vendorCache=new Map();
 const vendorURLs={"pdf.js":"https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js","docx.js":"https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js","xlsx.js":"https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js","pptx.js":"https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"};
+const slideImageCache=new Map();let imageJobs=0;
+async function findSlideImage(topic){
+ const key=topic.toLowerCase();if(slideImageCache.has(key))return slideImageCache.get(key);
+ const headers={'User-Agent':'NinaBrittech/1.0 (educational slide images)'};
+ const query=new URLSearchParams({action:'query',format:'json',generator:'search',gsrsearch:topic,gsrnamespace:'0',gsrlimit:'3',prop:'pageimages',piprop:'thumbnail|name',pithumbsize:'1000',pilicense:'free'});
+ const r=await fetch('https://pt.wikipedia.org/w/api.php?'+query,{headers,signal:AbortSignal.timeout(5000)});if(!r.ok)throw Error('search');const result=await r.json();
+ const page=Object.values(result.query?.pages||{}).sort((a,b)=>(a.index||0)-(b.index||0)).find(p=>p.thumbnail?.source&&p.pageimage&&!/\.(svg|gif)$/i.test(p.pageimage));if(!page)throw Error('no image');
+ const src=new URL(page.thumbnail.source);if(src.protocol!=='https:'||!['upload.wikimedia.org','thumb.wikimedia.org'].includes(src.hostname))throw Error('host');
+ const metaQuery=new URLSearchParams({action:'query',format:'json',titles:'File:'+page.pageimage,prop:'imageinfo',iiprop:'extmetadata|url'});
+ const metaResponse=await fetch('https://commons.wikimedia.org/w/api.php?'+metaQuery,{headers,signal:AbortSignal.timeout(4000)});if(!metaResponse.ok)throw Error('credits');const meta=await metaResponse.json();const info=Object.values(meta.query?.pages||{})[0]?.imageinfo?.[0];if(!info?.descriptionurl)throw Error('credits');
+ const image=await fetch(src,{headers,redirect:'error',signal:AbortSignal.timeout(5000)});if(!image.ok)throw Error('download');const mime=image.headers.get('content-type')?.split(';')[0];if(!['image/jpeg','image/png','image/webp'].includes(mime))throw Error('format');
+ const chunks=[];let size=0;for await(const chunk of image.body){size+=chunk.length;if(size>4000000)throw Error('size');chunks.push(chunk);}
+ const plain=s=>String(s||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').slice(0,500);
+ const data={data:'data:'+mime+';base64,'+Buffer.concat(chunks).toString('base64'),source:info.descriptionurl,credit:[plain(info.extmetadata?.Artist?.value),plain(info.extmetadata?.LicenseShortName?.value),plain(info.extmetadata?.Credit?.value)].filter(Boolean).join(' · ')};
+ if(slideImageCache.size>=30)slideImageCache.delete(slideImageCache.keys().next().value);slideImageCache.set(key,data);return data;
+}
+
 const providerCooldown=new Map();
 let catalogCache=null;let catalogUntil=0;
 const limits = new Map();
@@ -63,6 +80,7 @@ const server=http.createServer(async(req,res)=>{
  if(req.method==="GET"&&["/icon-192.png","/icon-512.png"].includes(url.pathname)){res.writeHead(200,{"Content-Type":"image/png","Cache-Control":"public, max-age=86400"});return res.end(Buffer.from(appIcons[url.pathname.includes("192")?"192":"512"],"base64"));}
  if(req.method==="GET"&&url.pathname.startsWith('/vendor/')){const name=url.pathname.slice('/vendor/'.length),remote=vendorURLs[name];if(!remote)return json(res,404,{error:"Recurso inexistente."});try{let data=vendorCache.get(name);if(!data){const result=await fetch(remote,{signal:AbortSignal.timeout(20000)});if(!result.ok)throw Error('dependency');data=Buffer.from(await result.arrayBuffer());if(data.length<1000||data.length>2000000)throw Error('size');vendorCache.set(name,data);}res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'private, max-age=86400'});return res.end(data);}catch{return json(res,502,{error:"Recurso de exportação temporariamente indisponível. Tente novamente."});}}
  if(req.method==="GET"&&url.pathname==="/tools.js"){res.writeHead(200,{"Content-Type":"text/javascript; charset=utf-8","Cache-Control":"no-cache"});return res.end(toolsPage);}
+ if(req.method==='GET'&&url.pathname==='/api/slide-image'){const topic=(url.searchParams.get('topic')||'').trim().slice(0,120);if(topic.length<2)return json(res,400,{error:'Tema inválido.'});if(imageJobs>=3)return json(res,429,{error:'Busca de imagens ocupada.'});imageJobs++;try{return json(res,200,await findSlideImage(topic));}catch{return json(res,404,{error:'Imagem indisponível para este tema.'});}finally{imageJobs--;}}
  if(req.method==="GET"&&url.pathname==="/api/models"){try{if(!catalogCache||catalogUntil<Date.now()){if(!process.env.MANDAPI_API_KEY)return json(res,503,{error:"MandAPI não configurada."});const r=await fetch("https://api.mandapi.com/v1/models",{headers:{Authorization:"Bearer "+process.env.MANDAPI_API_KEY},signal:AbortSignal.timeout(15000)});if(!r.ok)return json(res,502,{error:"Catálogo indisponível."});const d=await r.json();catalogCache=(Array.isArray(d.data)?d.data:[]).map(m=>({id:m.id,capabilities:m.capabilities,modalities:m.modalities,input_modalities:m.input_modalities,supported_endpoint_types:m.supported_endpoint_types}));catalogUntil=Date.now()+300000;}return json(res,200,{models:catalogCache});}catch{return json(res,502,{error:"Não foi possível consultar modelos."});}}
  if(req.method==="GET"&&url.pathname==="/health")return json(res,200,{status:"ok",providers:{mandapi:!!process.env.MANDAPI_API_KEY,maritaca:!!process.env.MARITACA_API_KEY}});
  if(req.method==="GET"&&(url.pathname==="/"||url.pathname==="/nina")){

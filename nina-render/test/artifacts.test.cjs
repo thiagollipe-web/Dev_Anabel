@@ -4,3 +4,5 @@ test('multi-file code preserves exact contents and paths without executing',()=>
 test('unclosed blocks are not exported and unsafe paths never reach ZIP',()=>{assert.equal(A.files('```python\nprint(1)').length,0);for(const p of ['../secret.py','/etc/passwd','a/../../x.py','C:\\a.py','a//b.py'])assert.equal(A.safePath(p),null);assert.equal(A.files('### ../../x.py\n```python\nprint(1)\n```')[0].name,'arquivo-1.py');});
 test('duplicate files fail explicitly rather than silently overwrite',()=>assert.throws(()=>A.files('### main.py\n```python\na=1\n```\n### main.py\n```python\na=2\n```'),/repetido/));
 test('language extensions and unknown named files are preserved',()=>{for(const [language,ext] of [['rust','rs'],['go','go'],['javascript','js'],['css','css']])assert.equal(A.files('```'+language+'\nx\n```')[0].name,'arquivo-1.'+ext);assert.equal(A.files('### app.ex\n```elixir\nx\n```')[0].name,'app.ex');});
+
+test('named programming languages receive the code quality path',()=>{const Q=require('../code-quality.cjs');for(const lang of ['Rust','Go','Java','Kotlin','PHP','Elixir'])assert(Q.isCodeRequest('Crie um programa em '+lang),lang);});

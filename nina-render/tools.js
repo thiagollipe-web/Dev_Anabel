@@ -48,14 +48,57 @@ function box(text,cx,cy,w=300,h=100){x.fillStyle='#ded5fa';x.fillRect(cx-w/2,cy-
 if(map){const branches=Array.isArray(data.branches)?data.branches.slice(0,8):[];branches.forEach((b,i)=>{const angle=i*2*Math.PI/branches.length;const px=700+470*Math.cos(angle),py=540+325*Math.sin(angle);x.strokeStyle='#7860b4';x.lineWidth=4;x.beginPath();x.moveTo(700,540);x.lineTo(px,py);x.stroke();box(b.label+'\n'+(Array.isArray(b.items)?b.items.join('; '):''),px,py,300,130);});box(data.title,700,540,300,120);}
 else{for(const s of (Array.isArray(data.shapes)?data.shapes:[]).slice(0,80)){const num=(v,max)=>Math.max(0,Math.min(max,Number(v)||0));const px=num(s.x,1400),py=num(s.y,1000);x.fillStyle=/^#[0-9a-f]{6}$/i.test(s.color)?s.color:'#7860b4';if(s.type==='circle'){x.beginPath();x.arc(px,py,num(s.radius,500),0,Math.PI*2);x.fill();}else if(s.type==='text'){x.font='26px Arial';x.fillText(String(s.text||'').slice(0,100),px,py);}else{x.fillRect(px,py,num(s.width,1400),num(s.height,1000));}}}
 $('outputs').append(c);c.style.width='100%';c.toBlob(b=>download(b,map?'Nina_mapa_mental.png':'Nina_ilustracao.png'),'image/png');}
-async function create(type){const buttons=[...document.querySelectorAll('[data-create]')];buttons.forEach(b=>b.disabled=true);$('status').textContent='Criando material…';try{const request=$('prompt').value.trim();const last=[...history].reverse().find(m=>m.role==='assistant')?.content;const subject=request||last;if(!subject)throw Error('Descreva o material no campo de mensagem.');
+// Visual presentation engine: editable text and diagrams, embedded user/Wikimedia images.
+async function slideImage(topic){if(!topic)return null;try{const r=await fetch('/api/slide-image?topic='+encodeURIComponent(String(topic).slice(0,120)),{signal:AbortSignal.timeout(16000)});if(!r.ok)return null;const d=await r.json();return typeof d.data==='string'&&d.data.startsWith('data:image/')?d:null;}catch{return null;}}
+async function cropSlidePhoto(data,w,h){const bitmap=await createImageBitmap(await (await fetch(data)).blob());try{const c=document.createElement('canvas');c.width=Math.round(w*160);c.height=Math.round(h*160);const scale=Math.max(c.width/bitmap.width,c.height/bitmap.height);c.getContext('2d').drawImage(bitmap,(c.width-bitmap.width*scale)/2,(c.height-bitmap.height*scale)/2,bitmap.width*scale,bitmap.height*scale);return c.toDataURL('image/jpeg',.9);}finally{bitmap.close();}}
+async function buildPresentation(subject){
+ await lib('pptx');
+ const d=await askJSON('Você é professor e designer editorial. Planeje uma apresentação visual em português sobre o pedido. Respeite o número total de slides solicitado, incluindo capa; padrão 8, máximo 16. Uma ideia por slide, conteúdo correto, títulos curtos, linguagem clara, pouco texto. Alterne layouts adequados: cover, photo, process, comparison, timeline, takeaway. Use process apenas para etapas reais, timeline apenas se houver sequência temporal pertinente. Não invente dados, datas, citações, fontes nem URLs. Em photo, imageQuery deve nomear um objeto, lugar ou conceito concreto que apareceria na Wikipédia, sem pedir ilustrações abstratas. Evite repetir imagens. Esquema JSON: {"slides":[{"layout":"cover|photo|process|comparison|timeline|takeaway","title":"até 65 caracteres","subtitle":"até 150 caracteres","bullets":["até 120 caracteres"],"imageQuery":"termo concreto para imagem opcional","steps":[{"label":"até 35 caracteres","detail":"até 90 caracteres"}],"left":{"title":"até 40 caracteres","items":["até 100 caracteres"]},"right":{"title":"até 40 caracteres","items":["até 100 caracteres"]},"notes":"explicações para o apresentador; fontes apenas se fornecidas pelo usuário"}]}. Capa simples com título, subtítulo e imagem. Photo com 2 ou 3 pontos. Process/timeline com 3 a 4 etapas. Comparison com dois lados. Takeaway com conclusão e pergunta para discussão.\nPedido: '+subject.slice(0,5500),'slides');
+ const slides=d.slides.filter(s=>s&&typeof s.title==='string').slice(0,16);if(!slides.length)throw Error('Não foi possível estruturar os slides.');
+ const ppt=new PptxGenJS();ppt.layout='LAYOUT_WIDE';ppt.author='Nina · Brittech inc';ppt.subject=subject.slice(0,200);ppt.title=slides[0].title;ppt.lang='pt-BR';ppt.theme={headFontFace:'Aptos Display',bodyFontFace:'Aptos',lang:'pt-BR'};
+ const usedImages=new Set();const photos=media.filter(m=>m.type==='image'&&typeof m.data==='string');let photoIndex=0,remoteCount=0,missing=0;
+ const clean=(s,n=120)=>String(s||'').replace(/\*\*/g,'').slice(0,n);
+ for(let i=0;i<slides.length;i++){
+  const item=slides[i],slide=ppt.addSlide();let layout=['cover','photo','process','comparison','timeline','takeaway'].includes(item.layout)?item.layout:(i===0?'cover':'photo');
+  const dark=layout==='cover'||layout==='takeaway';const ink=dark?'FFFFFF':'172C39',muted=dark?'C5D5DF':'496170',accent='007E87';slide.background={color:dark?'142D3B':'F7F8F5'};
+  const text=(value,x,y,w,h,size=22,extra={})=>slide.addText(clean(value,2000),{x,y,w,h,fontFace:'Aptos',fontSize:size,color:ink,margin:0,breakLine:false,fit:'shrink',...extra});
+  const bullets=(arr,x,y,w)=>{(Array.isArray(arr)?arr:[]).slice(0,3).forEach((v,j)=>{text(clean(v,120),x,y+j*1.06,w,.87,23);});};
+  let image=null;
+  if(layout==='cover'||layout==='photo'||layout==='takeaway'){
+   if(photos[photoIndex])image={data:photos[photoIndex++].data,credit:'Imagem anexada pelo usuário'};
+   else if(item.imageQuery&&remoteCount<5){remoteCount++;$('status').textContent='Preparando imagens e composição dos slides…';image=await slideImage(item.imageQuery);if(image&&usedImages.has(image.source))image=null;if(image)usedImages.add(image.source);}
+  }
+  if(layout==='cover'){
+   text(clean(item.title,65),.7,1.1,image?6.05:11.7,2.45,44,{bold:true});text(clean(item.subtitle||subject,150),.74,3.95,image?5.7:10.8,1.4,23,{color:muted});
+   if(image)slide.addImage({data:await cropSlidePhoto(image.data,5.35,5.95),x:7.3,y:.65,w:5.35,h:5.95});
+  }else{
+   text(clean(item.title,65),.7,.55,11.8,1.05,34,{bold:true});
+   if(layout==='process'||layout==='timeline'){
+    let steps=(Array.isArray(item.steps)?item.steps:[]).slice(0,4);if(!steps.length)steps=(item.bullets||[]).slice(0,4).map(label=>({label}));
+    if(steps.length<2){bullets(item.bullets,.8,2,11.5);}else{const n=steps.length,gap=.35,w=(11.8-(n-1)*gap)/n;steps.forEach((step,j)=>{const x=.75+j*(w+gap);slide.addShape(ppt.ShapeType.line,{x,y:2.65,w:w+.35,h:0,line:{color:'A4C3C6',width:3,beginArrowType:undefined,endArrowType:j===n-1?undefined:'triangle'}});text(layout==='timeline'?clean(step.label,35):String(j+1).padStart(2,'0'),x,1.95,w,.5,layout==='timeline'?22:32,{color:accent,bold:true});if(layout!=='timeline')text(clean(step.label,35),x,3.05,w,1,25,{bold:true});text(clean(step.detail,90),x,layout==='timeline'?3.1:4.2,w,1.6,21,{color:muted});});}
+   }else if(layout==='comparison'){
+    const sides=[item.left||{},item.right||{}];sides.forEach((side,j)=>{const x=.8+j*6.15;text(clean(side.title||(j?'Segunda perspectiva':'Primeira perspectiva'),40),x,1.95,5.5,.9,28,{bold:true,color:accent});bullets(side.items||item.bullets,x,3.15,5.35);});slide.addShape(ppt.ShapeType.line,{x:6.63,y:2,w:0,h:4.1,line:{color:'BCCBD0',width:1}});
+   }else{
+    if(item.subtitle)text(clean(item.subtitle,150),.8,1.85,image?5.7:11.5,1.1,25,{color:muted});bullets(item.bullets,.8,item.subtitle?3.3:2.15,image?5.7:11.5);
+    if(image)slide.addImage({data:await cropSlidePhoto(image.data,5.4,4.7),x:7.2,y:1.95,w:5.4,h:4.7});
+   }
+  }
+  text(String(i+1).padStart(2,'0'),12.1,7.05,.5,.22,10,{color:muted});
+  if(image?.source){text('Imagem: Wikimedia Commons',.75,6.85,9,.2,9,{color:muted,hyperlink:{url:image.source}});}
+  if(!image&&(layout==='cover'||layout==='photo'))missing++;
+  slide.addNotes([clean(item.notes||'',4000),image?('Créditos da imagem: '+(image.credit||'')+'\n'+(image.source||'Imagem enviada pelo usuário')):'Sem imagem externa disponível.'].join('\n\n'));
+ }
+ download(await ppt.write({outputType:'blob'}),'Nina_apresentacao.pptx');return {missing};
+}
+
+async function create(type){let visualWarning='';const buttons=[...document.querySelectorAll('[data-create]')];buttons.forEach(b=>b.disabled=true);$('status').textContent='Criando material…';try{const request=$('prompt').value.trim();const last=[...history].reverse().find(m=>m.role==='assistant')?.content;const subject=request||last;if(!subject)throw Error('Descreva o material no campo de mensagem.');
 if(type==='map'||type==='image'){const schema=type==='map'?'{"title":"tema","branches":[{"label":"ramo","items":["detalhe"]}]}':'{"title":"título","shapes":[{"type":"circle ou rect ou text","x":100,"y":200,"radius":50,"width":100,"height":100,"color":"#336699","text":"legenda"}]}';draw(parseJSON(await ask('Crie '+(type==='map'?'um mapa mental com até 8 ramos':'uma ilustração vetorial rica, composição em canvas 1400x1000, margem superior de 100px, até 80 formas')+'. Retorne apenas JSON válido no esquema: '+schema+'\nPedido: '+subject.slice(0,5000))),type==='map');}
 else if(type==='xlsx'){await lib('xlsx');const d=await askJSON('Gere uma planilha sobre o pedido abaixo. Retorne somente JSON {"rows":[["cabeçalho","coluna"],["valor",123]]}. Até 60 linhas, até 10 colunas, sem fórmulas.\n'+subject.slice(0,5000),'rows');if(!Array.isArray(d.rows))throw Error('A IA não retornou uma tabela válida.');const rows=d.rows.slice(0,100).map(r=>Array.isArray(r)?r.slice(0,15).map(v=>typeof v==='number'?v:String(v??'').slice(0,2000)):[]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Nina');download(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})]),'Nina_planilha.xlsx');}
-else if(type==='pptx'){await lib('pptx');const d=await askJSON('Gere até 8 slides com título e até 4 tópicos curtos por slide. Retorne somente JSON {"slides":[{"title":"Título","bullets":["Tópico"]}]}.\n'+subject.slice(0,5000),'slides');if(!Array.isArray(d.slides))throw Error('Slides inválidos.');const ppt=new PptxGenJS();ppt.layout='LAYOUT_WIDE';ppt.author='Nina · Brittech.inc';for(const item of d.slides.slice(0,10)){const slide=ppt.addSlide();slide.background={color:'101323'};slide.addText(String(item.title||'Nina').slice(0,100),{x:0.6,y:0.4,w:12,h:1,fontSize:30,color:'C7B8FF',bold:true});slide.addText((Array.isArray(item.bullets)?item.bullets:[]).slice(0,4).map(t=>'• '+String(t).slice(0,200)).join('\n\n'),{x:0.7,y:1.8,w:11.8,h:4.8,fontSize:23,color:'FFFFFF',breakLine:false});}download(await ppt.write({outputType:'blob'}),'Nina_apresentacao.pptx');}
+else if(type==='pptx'){const result=await buildPresentation(subject);if(result.missing)visualWarning=' Algumas imagens não estavam disponíveis; anexe fotos para personalizar esses slides.';}
 else{let text=request?await ask('Produza um documento completo e bem organizado sobre o pedido, sem marcadores Markdown de negrito: '+subject.slice(0,6000)):subject;text=text.replace(/\*\*([^*]+)\*\*/g,'$1');
 if(type==='pdf'){await lib('pdf');const pdf=new jspdf.jsPDF();pdf.setFont('helvetica');pdf.setFontSize(12);const lines=pdf.splitTextToSize(text,175);let y=20;for(const line of lines){if(y>278){pdf.addPage();y=20;}pdf.text(line,18,y);y+=6;}download(pdf.output('blob'),'Nina_documento.pdf');}
 else{await lib('docx');const doc=new docx.Document({sections:[{children:text.split('\n').map(t=>new docx.Paragraph({children:[new docx.TextRun(t)]}))}]});download(await docx.Packer.toBlob(doc),'Nina_documento.docx');}}
-$('status').textContent='Arquivo pronto. Toque em Baixar na conversa.';return true;}catch(e){$('status').textContent='Não foi possível gerar: '+e.message;return false;}finally{buttons.forEach(b=>b.disabled=false);}}
+$('status').textContent='Arquivo pronto. Toque em Baixar na conversa.'+visualWarning;return true;}catch(e){$('status').textContent='Não foi possível gerar: '+e.message;return false;}finally{buttons.forEach(b=>b.disabled=false);}}
 document.querySelectorAll('[data-create]').forEach(b=>b.onclick=()=>create(b.dataset.create));
 
 // Nins: isolated browser profiles. Feedback updates Beta estimates, not LLM weights.

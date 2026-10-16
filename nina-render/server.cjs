@@ -14,6 +14,8 @@ const path = require("node:path");
 const appIcons=require("./icons.json");
 const toolsPage = fs.readFileSync(path.join(__dirname, "tools.js"));
 const page = fs.readFileSync(path.join(__dirname, "index.html"));
+const vendorCache=new Map();
+const vendorURLs={"pdf.js":"https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js","docx.js":"https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js","xlsx.js":"https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js","pptx.js":"https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"};
 const providerCooldown=new Map();
 let catalogCache=null;let catalogUntil=0;
 const limits = new Map();
@@ -59,6 +61,7 @@ const server=http.createServer(async(req,res)=>{
  if(req.method==="GET"&&url.pathname==="/api/session")return json(res,200,{authenticated:true});
  if(req.method==="GET"&&["/manifest.webmanifest","/sw.js"].includes(url.pathname)){res.writeHead(200,{"Content-Type":url.pathname.endsWith(".js")?"text/javascript; charset=utf-8":"application/manifest+json; charset=utf-8","Cache-Control":"no-cache","Service-Worker-Allowed":"/"});return res.end(fs.readFileSync(path.join(__dirname,url.pathname.slice(1))));}
  if(req.method==="GET"&&["/icon-192.png","/icon-512.png"].includes(url.pathname)){res.writeHead(200,{"Content-Type":"image/png","Cache-Control":"public, max-age=86400"});return res.end(Buffer.from(appIcons[url.pathname.includes("192")?"192":"512"],"base64"));}
+ if(req.method==="GET"&&url.pathname.startsWith('/vendor/')){const name=url.pathname.slice('/vendor/'.length),remote=vendorURLs[name];if(!remote)return json(res,404,{error:"Recurso inexistente."});try{let data=vendorCache.get(name);if(!data){const result=await fetch(remote,{signal:AbortSignal.timeout(20000)});if(!result.ok)throw Error('dependency');data=Buffer.from(await result.arrayBuffer());if(data.length<1000||data.length>2000000)throw Error('size');vendorCache.set(name,data);}res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'private, max-age=86400'});return res.end(data);}catch{return json(res,502,{error:"Recurso de exportação temporariamente indisponível. Tente novamente."});}}
  if(req.method==="GET"&&url.pathname==="/tools.js"){res.writeHead(200,{"Content-Type":"text/javascript; charset=utf-8","Cache-Control":"no-cache"});return res.end(toolsPage);}
  if(req.method==="GET"&&url.pathname==="/api/models"){try{if(!catalogCache||catalogUntil<Date.now()){if(!process.env.MANDAPI_API_KEY)return json(res,503,{error:"MandAPI não configurada."});const r=await fetch("https://api.mandapi.com/v1/models",{headers:{Authorization:"Bearer "+process.env.MANDAPI_API_KEY},signal:AbortSignal.timeout(15000)});if(!r.ok)return json(res,502,{error:"Catálogo indisponível."});const d=await r.json();catalogCache=(Array.isArray(d.data)?d.data:[]).map(m=>({id:m.id,capabilities:m.capabilities,modalities:m.modalities,input_modalities:m.input_modalities,supported_endpoint_types:m.supported_endpoint_types}));catalogUntil=Date.now()+300000;}return json(res,200,{models:catalogCache});}catch{return json(res,502,{error:"Não foi possível consultar modelos."});}}
  if(req.method==="GET"&&url.pathname==="/health")return json(res,200,{status:"ok",providers:{mandapi:!!process.env.MANDAPI_API_KEY,maritaca:!!process.env.MARITACA_API_KEY}});

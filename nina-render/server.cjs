@@ -5,6 +5,7 @@ const {HttpError,readBytes,readJsonObject,requireString,gate,cachedFetch,ByteCac
 const acquireTask=gate(4,2);
 const getVendor=cachedFetch((...args)=>fetch(...args),4500000);
 const Grades=require('./grades.js');
+const CodeQuality=require('./code-quality.cjs');
 const loginPage= require("node:fs").readFileSync(require("node:path").join(__dirname,"login.html"));
 const sessions=new Map();const loginAttempts=new Map();
 function digest(text){return crypto.createHash("sha256").update(String(text)).digest();}
@@ -47,9 +48,9 @@ async function generate(messages,fetcher=fetch,env=process.env,options={}){
  const mode=Object.hasOwn(MARITACA_MODELS,options.mode)?options.mode:'balanced';
  const model=MARITACA_MODELS[mode],key=env.MARITACA_API_KEY;
  if(!key){options.onFailure?.({provider:'maritaca',model,status:'not_configured'});return null;}
- const budget=AbortSignal.timeout(mode==='thinking'?80000:mode==='fast'?30000:45000);
+ const budget=AbortSignal.timeout(options.codeTask?90000:mode==='thinking'?80000:mode==='fast'?30000:45000);
  const signal=options.signal?AbortSignal.any([options.signal,budget]):budget;
- const payload={model,messages,stream:false,max_tokens:mode==='thinking'?8192:mode==='fast'?1200:4000,...(options.media?{extraction_effort:'advanced'}:{})};
+ const payload={model,messages,stream:false,max_tokens:options.codeTask?(mode==='thinking'?16000:mode==='fast'?6000:10000):(mode==='thinking'?8192:mode==='fast'?1200:4000),...(options.media?{extraction_effort:'advanced'}:{})};
  for(let attempt=0;attempt<2;attempt++){
   if(options.signal?.aborted)throw new HttpError(499,'Solicitação cancelada.');
   if(signal.aborted)return null;
@@ -123,8 +124,13 @@ async function handleRequest(req,res){const nonce=crypto.randomBytes(18).toStrin
   if(Array.isArray(body.media)&&body.media.length&&!media.length)return json(res,400,{error:"Mídia inválida ou muito grande."});
   if(media.length){messages[messages.length-1].content=[{type:"text",text:body.prompt.trim()+"\nConsidere as mídias anexadas. A API extrai texto e descrições das imagens. Vídeos são quadros amostrados; não deduza o que ocorreu nos intervalos. Áudios: transcreva ou interprete somente o que estiver audível."},...media.flatMap(m=>m.type==="image"?[{type:"text",text:String(m.name||"Imagem").slice(0,160)},{type:"image_url",image_url:{url:m.data}}]:[{type:"input_audio",input_audio:{data:m.data,format:"wav"}}])];}
   if(media.some(m=>m.type==='audio'))return json(res,422,{error:'Anexe o áudio pela interface para transcrever a fala antes da análise.'});
+  const codeTask=!material&&CodeQuality.isCodeRequest(body.prompt);
+  if(codeTask)messages.splice(messages.length-1,0,{role:'system',content:CodeQuality.POLICY});
   const failures=[];
-  const result=await generate(messages,fetch,process.env,{mode,media:media.length>0,signal:aborter.signal,onFailure:f=>failures.push(f)});
+  const generationOptions={mode,codeTask,media:media.length>0,signal:aborter.signal,onFailure:f=>failures.push(f)};
+  let result=await generate(messages,fetch,process.env,generationOptions);
+  if(result&&codeTask){const checked=await CodeQuality.review(result,messages,{prompt:body.prompt,options:generationOptions,generate:(repairMessages,options)=>generate(repairMessages,fetch,process.env,options)});if(!checked.ok)return json(res,422,{error:'A revisão encontrou inconsistências e não conseguiu corrigi-las nesta tentativa. Divida o projeto em etapas e tente novamente.',code:'CODE_QUALITY_REJECTED',checks:checked.issues});result=checked.result;}
+
   if(result)result.mode=mode;
   if(result)return json(res,200,result);
   const reference=crypto.randomUUID();console.warn(JSON.stringify({event:"ai_unavailable",reference,mode,media:media.length>0,attempts:failures}));

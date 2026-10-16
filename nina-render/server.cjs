@@ -45,24 +45,27 @@ const limits = new Map();
 setInterval(() => { for (const [k,v] of limits) if (v.until < Date.now()) limits.delete(k); },60000).unref();
 function json(res,status,data){res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"});res.end(JSON.stringify(data));}
 async function generate(messages, fetcher=fetch, env=process.env, options={}){
+ const primaryModel=options.model||env.MANDAPI_MODEL||"deepseek-v4-flash";
  const providers=[
- {name:"mandapi",key:env.MANDAPI_API_KEY,model:options.model||env.MANDAPI_MODEL||"deepseek-v4-flash",url:"https://api.mandapi.com/v1/chat/completions"},
+ {name:"mandapi",key:env.MANDAPI_API_KEY,model:primaryModel,url:"https://api.mandapi.com/v1/chat/completions"},
+ {name:"mandapi",key:env.MANDAPI_API_KEY,model:env.MANDAPI_FALLBACK_MODEL||"deepseek-v4-flash",timeoutMs:15000,url:"https://api.mandapi.com/v1/chat/completions"},
  {name:"maritaca",key:env.MARITACA_API_KEY,model:env.MARITACA_MODEL||"sabia-4",url:"https://chat.maritaca.ai/api/chat/completions"}
  ];
  if(options.media){providers.splice(0,providers.length,...(options.models||[options.model]).map(model=>({name:"mandapi",key:env.MANDAPI_API_KEY,model,url:"https://api.mandapi.com/v1/chat/completions"})));}
- const ordered=providers.filter(p=>(providerCooldown.get(p.name+":"+p.model)||0)<Date.now());
- if(!ordered.length)ordered.push(...providers);
+ const configured=providers.filter((p,i,all)=>p.key&&all.findIndex(other=>other.name===p.name&&other.model===p.model)===i);
+ const ordered=configured.filter(p=>(providerCooldown.get(p.name+":"+p.model)||0)<Date.now());
+ if(!ordered.length)ordered.push(...configured);
  for(const p of ordered){
   if(options.signal?.aborted)throw new HttpError(499,"Solicitação cancelada.");
   if(!p.key)continue;
   try{
-   const r=await fetcher(p.url,{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+p.key},body:JSON.stringify({model:p.model,messages,stream:false,max_tokens:options.mode==="fast"?1200:4000}),signal:options.signal?AbortSignal.any([options.signal,AbortSignal.timeout(options.mode==="fast"?15000:25000)]):AbortSignal.timeout(options.mode==="fast"?15000:25000)});
-   if(!r.ok){providerCooldown.set(p.name+":"+p.model,Date.now()+30000);if(options.onFailure)options.onFailure({model:p.model,status:r.status});continue;}
+   const r=await fetcher(p.url,{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+p.key},body:JSON.stringify({model:p.model,messages,stream:false,max_tokens:options.mode==="fast"?1200:4000}),signal:options.signal?AbortSignal.any([options.signal,AbortSignal.timeout(p.timeoutMs||(options.mode==="fast"?15000:25000))]):AbortSignal.timeout(p.timeoutMs||(options.mode==="fast"?15000:25000))});
+   if(!r.ok){providerCooldown.set(p.name+":"+p.model,Date.now()+30000);if(options.onFailure)options.onFailure({provider:p.name,model:p.model,status:r.status});continue;}
    const data=JSON.parse((await readBytes(r.body,2000000)).toString('utf8'));const choice=data?.choices?.[0];const text=choice?.message?.content;
-   if(choice?.finish_reason==='length'){if(options.onFailure)options.onFailure({model:p.model,status:'truncated'});continue;}
+   if(choice?.finish_reason==='length'){if(options.onFailure)options.onFailure({provider:p.name,model:p.model,status:'truncated'});continue;}
    if(typeof text==="string"&&text.trim()){providerCooldown.delete(p.name+":"+p.model);return {text,provider:p.name,model:p.model};}
-   providerCooldown.set(p.name+":"+p.model,Date.now()+30000);
-  }catch{if(options.signal?.aborted)throw new HttpError(499,"Solicitação cancelada.");providerCooldown.set(p.name+":"+p.model,Date.now()+30000);if(options.onFailure)options.onFailure({model:p.model,status:"timeout_or_network"});}
+   providerCooldown.set(p.name+":"+p.model,Date.now()+30000);if(options.onFailure)options.onFailure({provider:p.name,model:p.model,status:"empty_response"});
+  }catch{if(options.signal?.aborted)throw new HttpError(499,"Solicitação cancelada.");providerCooldown.set(p.name+":"+p.model,Date.now()+30000);if(options.onFailure)options.onFailure({provider:p.name,model:p.model,status:"timeout_or_network"});}
  }
  return null;
 }
@@ -133,7 +136,10 @@ async function handleRequest(req,res){const nonce=crypto.randomBytes(18).toStrin
    if(reviewed)result={...reviewed,reviewed:true};else result={...result,reviewed:false,notice:"A revisão adicional ficou indisponível; esta é a primeira resposta."};
   }
   if(result)result.mode=mode;
-  return result?json(res,200,result):json(res,503,{error:"Nenhum provedor respondeu. Confira as chaves, o saldo e os modelos no Render.",attempts:failures});
+  if(result)return json(res,200,result);
+  const reference=crypto.randomUUID();console.warn(JSON.stringify({event:"ai_unavailable",reference,mode,media:media.length>0,attempts:failures}));
+  res.setHeader('Retry-After','5');
+  return json(res,503,{error:"Os serviços de IA estão temporariamente indisponíveis. Tente novamente em instantes.",code:"AI_UNAVAILABLE",reference});
  }catch(e){if(!res.destroyed)return json(res,e.status||500,{error:e.status?e.message:'Falha ao processar a solicitação.'});}
  finally{if(release)release();res.removeListener('close',onClose);}
 }
@@ -142,4 +148,5 @@ server.headersTimeout=15000;server.requestTimeout=30000;
 
 if(require.main===module)server.listen(Number(process.env.PORT)||3000,"0.0.0.0",()=>console.log("Nina iniciada"));
 module.exports={server,generate};
+
 

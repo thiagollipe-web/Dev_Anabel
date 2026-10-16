@@ -3,6 +3,7 @@ const http = require("node:http");
 const {StringDecoder}=require("node:string_decoder");
 const fs = require("node:fs");
 const path = require("node:path");
+const appIcons=require("./icons.json");
 const toolsPage = fs.readFileSync(path.join(__dirname, "tools.js"));
 const page = fs.readFileSync(path.join(__dirname, "index.html"));
 let catalogCache=null;let catalogUntil=0;
@@ -31,11 +32,13 @@ const server=http.createServer(async(req,res)=>{
  res.setHeader("Referrer-Policy","no-referrer");
  res.setHeader("X-Frame-Options","DENY");
  const url=new URL(req.url,"http://localhost");
+ if(req.method==="GET"&&["/manifest.webmanifest","/sw.js"].includes(url.pathname)){res.writeHead(200,{"Content-Type":url.pathname.endsWith(".js")?"text/javascript; charset=utf-8":"application/manifest+json; charset=utf-8","Cache-Control":"no-cache","Service-Worker-Allowed":"/"});return res.end(fs.readFileSync(path.join(__dirname,url.pathname.slice(1))));}
+ if(req.method==="GET"&&["/icon-192.png","/icon-512.png"].includes(url.pathname)){res.writeHead(200,{"Content-Type":"image/png","Cache-Control":"public, max-age=86400"});return res.end(Buffer.from(appIcons[url.pathname.includes("192")?"192":"512"],"base64"));}
  if(req.method==="GET"&&url.pathname==="/tools.js"){res.writeHead(200,{"Content-Type":"text/javascript; charset=utf-8","Cache-Control":"no-cache"});return res.end(toolsPage);}
  if(req.method==="GET"&&url.pathname==="/api/models"){try{if(!catalogCache||catalogUntil<Date.now()){if(!process.env.MANDAPI_API_KEY)return json(res,503,{error:"MandAPI não configurada."});const r=await fetch("https://api.mandapi.com/v1/models",{headers:{Authorization:"Bearer "+process.env.MANDAPI_API_KEY},signal:AbortSignal.timeout(15000)});if(!r.ok)return json(res,502,{error:"Catálogo indisponível."});const d=await r.json();catalogCache=(Array.isArray(d.data)?d.data:[]).map(m=>({id:m.id,capabilities:m.capabilities,modalities:m.modalities,input_modalities:m.input_modalities,supported_endpoint_types:m.supported_endpoint_types}));catalogUntil=Date.now()+300000;}return json(res,200,{models:catalogCache});}catch{return json(res,502,{error:"Não foi possível consultar modelos."});}}
  if(req.method==="GET"&&url.pathname==="/health")return json(res,200,{status:"ok",providers:{mandapi:!!process.env.MANDAPI_API_KEY,maritaca:!!process.env.MARITACA_API_KEY}});
  if(req.method==="GET"&&(url.pathname==="/"||url.pathname==="/nina")){
-  res.writeHead(200,{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-cache","Content-Security-Policy":"default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src blob: https://cdn.jsdelivr.net; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'unsafe-inline'; connect-src 'self' blob: https://cdn.jsdelivr.net https://tessdata.projectnaptha.com https://huggingface.co https://*.huggingface.co https://*.hf.co; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});return res.end(page);
+  res.writeHead(200,{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-cache","Content-Security-Policy":"default-src 'none'; manifest-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src 'self' blob: https://cdn.jsdelivr.net; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'unsafe-inline'; connect-src 'self' blob: https://cdn.jsdelivr.net https://tessdata.projectnaptha.com https://huggingface.co https://*.huggingface.co https://*.hf.co; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});return res.end(page);
  }
  if(url.pathname!=="/api/chat")return json(res,404,{error:"Não encontrado."});
  if(req.method!=="POST")return json(res,405,{error:"Use POST."});

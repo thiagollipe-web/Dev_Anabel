@@ -6,6 +6,7 @@ const path = require("node:path");
 const appIcons=require("./icons.json");
 const toolsPage = fs.readFileSync(path.join(__dirname, "tools.js"));
 const page = fs.readFileSync(path.join(__dirname, "index.html"));
+const providerCooldown=new Map();
 let catalogCache=null;let catalogUntil=0;
 const limits = new Map();
 setInterval(() => { for (const [k,v] of limits) if (v.until < Date.now()) limits.delete(k); },60000).unref();
@@ -16,14 +17,17 @@ async function generate(messages, fetcher=fetch, env=process.env, options={}){
  {name:"maritaca",key:env.MARITACA_API_KEY,model:env.MARITACA_MODEL||"sabia-4",url:"https://chat.maritaca.ai/api/chat/completions"}
  ];
  if(options.media){providers.splice(0,providers.length,...(options.models||[options.model]).map(model=>({name:"mandapi",key:env.MANDAPI_API_KEY,model,url:"https://api.mandapi.com/v1/chat/completions"})));}
- for(const p of providers){
+ const ordered=providers.filter(p=>(providerCooldown.get(p.name+":"+p.model)||0)<Date.now());
+ if(!ordered.length)ordered.push(...providers);
+ for(const p of ordered){
   if(!p.key)continue;
   try{
-   const r=await fetcher(p.url,{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+p.key},body:JSON.stringify({model:p.model,messages,stream:false,max_tokens:options.mode==="fast"?1200:4000}),signal:AbortSignal.timeout(45000)});
-   if(!r.ok){if(options.onFailure)options.onFailure({model:p.model,status:r.status});continue;}
+   const r=await fetcher(p.url,{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+p.key},body:JSON.stringify({model:p.model,messages,stream:false,max_tokens:options.mode==="fast"?1200:4000}),signal:AbortSignal.timeout(options.mode==="fast"?15000:25000)});
+   if(!r.ok){providerCooldown.set(p.name+":"+p.model,Date.now()+30000);if(options.onFailure)options.onFailure({model:p.model,status:r.status});continue;}
    const data=await r.json();const text=data?.choices?.[0]?.message?.content;
-   if(typeof text==="string"&&text.trim())return {text,provider:p.name,model:p.model};
-  }catch{if(options.onFailure)options.onFailure({model:p.model,status:"timeout_or_network"});}
+   if(typeof text==="string"&&text.trim()){providerCooldown.delete(p.name+":"+p.model);return {text,provider:p.name,model:p.model};}
+   providerCooldown.set(p.name+":"+p.model,Date.now()+30000);
+  }catch{providerCooldown.set(p.name+":"+p.model,Date.now()+30000);if(options.onFailure)options.onFailure({model:p.model,status:"timeout_or_network"});}
  }
  return null;
 }
@@ -71,7 +75,7 @@ const server=http.createServer(async(req,res)=>{
   if(media.some(m=>m.type==="audio"))return json(res,422,{error:"Envie áudio pelo anexo da interface: a fala é transcrita pelo Whisper local antes da análise. Áudio direto neste gateway não foi validado."});
   let result=await generate(messages,fetch,process.env,{mode,model:selectedModel,models,media:media.length>0,onFailure:f=>failures.push(f)});
   if(result&&mode==="thinking"){
-   const reviewed=await generate([...messages,{role:"assistant",content:result.text},{role:"user",content:"Revise a resposta acima usando a solicitação e os anexos. Corrija erros, confira cálculos e afirmações sem evidência. Entregue somente a resposta final revisada, com justificativa concisa quando útil."}],fetch,process.env,{mode,model:selectedModel,media:media.length>0});
+   const reviewed=await generate([...messages,{role:"assistant",content:result.text},{role:"user",content:"Revise a resposta acima usando a solicitação e os anexos. Corrija erros, confira cálculos e afirmações sem evidência. Entregue somente a resposta final revisada, com justificativa concisa quando útil."}],fetch,process.env,{mode,model:selectedModel,models,media:media.length>0});
    if(reviewed)result={...reviewed,reviewed:true};else result={...result,reviewed:false,notice:"A revisão adicional ficou indisponível; esta é a primeira resposta."};
   }
   if(result)result.mode=mode;

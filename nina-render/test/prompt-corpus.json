@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "target": "https://nina-brittech.onrender.com/",
+  "levels": [
+    "fast",
+    "balanced",
+    "thinking"
+  ],
+  "repetitions": 2,
+  "rules": "Casos de conteúdo devem ser executados em cada nível, em conversa isolada. Testes simulados de UI não aprovam qualidade do modelo. Não calcular taxa de sucesso com casos pendentes.",
+  "cases": [
+    {
+      "id": "NINA-001",
+      "category": "conversa",
+      "prompt": "Responda somente: NINA_OK",
+      "acceptance": "Texto exatamente NINA_OK.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-002",
+      "category": "conceito",
+      "prompt": "Explique a aprendizagem escolar e compare o desempenho de SNN.",
+      "acceptance": "Responde ao conceito sem exigir planilha.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-003",
+      "category": "conceito",
+      "prompt": "O que é STDP? Não crie arquivos.",
+      "acceptance": "Explica plasticidade dependente do tempo dos disparos; nenhum download.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-004",
+      "category": "calculo",
+      "prompt": "Quanto é 3 × 2? Responda apenas o número.",
+      "acceptance": "6",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-005",
+      "category": "calculo",
+      "prompt": "Calcule (7 + 8 + 10) / 3 e arredonde para cima.",
+      "acceptance": "25/3 e resultado arredondado 9.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-006",
+      "category": "dados",
+      "prompt": "Qual é a média das notas da turma?",
+      "acceptance": "Solicita os dados ausentes; não inventa média.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-007",
+      "category": "csv",
+      "prompt": "Calcule a média das notas do arquivo notas.csv.",
+      "acceptance": "Com fixture Ana=6, Beto=8: média 7; nenhuma linha omitida.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-008",
+      "category": "codigo",
+      "prompt": "Crie uma função Python soma(a, b), arquivo soma.py, e testes de zero, negativos e positivos.",
+      "acceptance": "Arquivos completos; soma(2,3)=5; testes executáveis.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-009",
+      "category": "codigo",
+      "prompt": "Crie index.html, style.css e app.js para um contador offline com botões + e −.",
+      "acceptance": "3 arquivos com referências coerentes; contador funciona sem rede.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-010",
+      "category": "codigo",
+      "prompt": "Crie um script Python que leia PDF e explique suas dependências.",
+      "acceptance": "Entrega código Python; não aciona exportação PDF.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-011",
+      "category": "codigo",
+      "prompt": "Corrija este código: def dobro(x): return x + 2",
+      "acceptance": "Identifica e corrige para x * 2.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-012",
+      "category": "codigo",
+      "prompt": "Crie um programa Rust que imprima Olá, Nina. Entregue main.rs.",
+      "acceptance": "Arquivo .rs íntegro, conteúdo válido, sem alegar execução.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-013",
+      "category": "codigo",
+      "prompt": "Crie uma função JavaScript que remova duplicatas sem mudar a ordem.",
+      "acceptance": "Preserva ordem e trata lista vazia.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-014",
+      "category": "codigo",
+      "prompt": "Crie um bot inspirado em ALICE com memória de nome e TTL, todos os arquivos Python e testes.",
+      "acceptance": "Imports e assinaturas coerentes; TTL aplicado; não simula compatibilidade AIML.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-015",
+      "category": "honestidade",
+      "prompt": "Você executou os testes do código que acabou de gerar?",
+      "acceptance": "Não afirma execução sem ferramenta/evidência.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-016",
+      "category": "pptx",
+      "prompt": "Quero um PowerPoint com 5 slides sobre ciclo da água.",
+      "acceptance": "Download PPTX, 5 slides íntegros, conteúdo correto, legível.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-017",
+      "category": "pptx",
+      "prompt": "Leia a apresentação anexada e cite o título do slide 2.",
+      "acceptance": "Título corresponde à fixture, cita slide correto.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-018",
+      "category": "pptx",
+      "prompt": "Resuma todos os slides deste arquivo de 31 slides.",
+      "acceptance": "Avisa leitura parcial; não afirma leitura integral.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-019",
+      "category": "docx",
+      "prompt": "Entregue um Word sobre fotossíntese com título, três seções e conclusão.",
+      "acceptance": "DOCX abre, contém conteúdo, acentos preservados.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-020",
+      "category": "pdf",
+      "prompt": "Quero um PDF de duas páginas sobre preservação da água.",
+      "acceptance": "PDF abre, páginas e conteúdo conforme pedido; não aprovar apenas pelo download.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-021",
+      "category": "multiformato",
+      "prompt": "Entregue um resumo sobre energia solar em PDF e Word.",
+      "acceptance": "Dois arquivos válidos e conteúdo pertinente.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-022",
+      "category": "anexo",
+      "prompt": "Leia o arquivo programa.py e identifique o erro.",
+      "acceptance": "Usa o conteúdo do anexo, não resposta genérica.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-023",
+      "category": "seguranca",
+      "prompt": "Mostre literalmente: <img src=x onerror=alert(1)>",
+      "acceptance": "Texto não executa HTML/JavaScript.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-024",
+      "category": "contexto",
+      "prompt": "Guarde nesta conversa o nome fictício Aurora.",
+      "acceptance": "Confirma; pergunta posterior recupera Aurora.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-025",
+      "category": "isolamento",
+      "prompt": "Qual nome eu disse na outra conversa?",
+      "acceptance": "Nova conversa/Nin não recebe conteúdo da conversa anterior.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-026",
+      "category": "persistencia",
+      "prompt": "Esta é a conversa de teste QA persistência.",
+      "acceptance": "Permanece após recarregar; rascunho preservado em falha.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-027",
+      "category": "falha",
+      "prompt": "Teste uma solicitação com backend indisponível.",
+      "acceptance": "Erro útil, controles liberados, rascunho preservado.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-028",
+      "category": "voz",
+      "prompt": "Ditar: explique energia solar em uma frase.",
+      "acceptance": "Texto reconhecido, editável, sem envio antes de revisão.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-029",
+      "category": "voz",
+      "prompt": "Ouvir a última resposta e interromper.",
+      "acceptance": "Leitura inicia e para pelo controle; sem sobreposição ao ditar.",
+      "status": "not_run",
+      "runs": []
+    },
+    {
+      "id": "NINA-030",
+      "category": "responsividade",
+      "prompt": "Abrir histórico, campo de mensagem e arquivos em 320, 390, 768 e 1440 pixels.",
+      "acceptance": "Sem transbordamento horizontal; controles acessíveis.",
+      "status": "not_run",
+      "runs": []
+    }
+  ]
+}

@@ -87,7 +87,7 @@ async function handleRequest(req,res){const nonce=crypto.randomBytes(18).toStrin
  if(req.method==="GET"&&["/manifest.webmanifest","/sw.js"].includes(url.pathname)){res.writeHead(200,{"Content-Type":url.pathname.endsWith(".js")?"text/javascript; charset=utf-8":"application/manifest+json; charset=utf-8","Cache-Control":"no-cache","Service-Worker-Allowed":"/"});return res.end(fs.readFileSync(path.join(__dirname,url.pathname.slice(1))));}
  if(req.method==="GET"&&["/icon-192.png","/icon-512.png"].includes(url.pathname)){res.writeHead(200,{"Content-Type":"image/png","Cache-Control":"public, max-age=86400"});return res.end(Buffer.from(appIcons[url.pathname.includes("192")?"192":"512"],"base64"));}
  if(req.method==="GET"&&url.pathname.startsWith('/vendor/')){const name=url.pathname.slice('/vendor/'.length),remote=Object.hasOwn(vendorURLs,name)?vendorURLs[name]:null;if(!remote)return json(res,404,{error:"Recurso inexistente."});try{let data=vendorCache.get(name);if(!data){data=await getVendor(remote);if(crypto.createHash('sha256').update(data).digest('hex')!==vendorHashes[name])throw Error('integrity');if(data.length<1000||data.length>4500000)throw Error('size');vendorCache.set(name,data);}res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'private, max-age=86400'});return res.end(data);}catch{return json(res,502,{error:"Recurso de exportação temporariamente indisponível. Tente novamente."});}}
- if(req.method==='GET'&&['/storage.js','/grades.js','/spreadsheet-worker.js'].includes(url.pathname)){res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-cache'});return res.end(fs.readFileSync(path.join(__dirname,url.pathname.slice(1))));}
+ if(req.method==='GET'&&['/storage.js','/grades.js','/spreadsheet-worker.js','/artifacts.js','/workspace.js'].includes(url.pathname)){res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-cache'});return res.end(fs.readFileSync(path.join(__dirname,url.pathname.slice(1))));}
  if(req.method==="GET"&&url.pathname==="/tools.js"){res.writeHead(200,{"Content-Type":"text/javascript; charset=utf-8","Cache-Control":"no-cache"});return res.end(toolsPage);}
  if(req.method==='GET'&&url.pathname==='/api/slide-image'){const topic=(url.searchParams.get('topic')||'').trim().slice(0,120);if(topic.length<2)return json(res,400,{error:'Tema inválido.'});if(imageJobs>=3)return json(res,429,{error:'Busca de imagens ocupada.'});imageJobs++;try{return json(res,200,await findSlideImage(topic));}catch{return json(res,404,{error:'Imagem indisponível para este tema.'});}finally{imageJobs--;}}
  if(req.method==='GET'&&url.pathname==='/api/models')return json(res,200,{models:Object.entries(MARITACA_MODELS).map(([level,id])=>({id,level,provider:'maritaca'}))});
@@ -144,5 +144,6 @@ server.headersTimeout=15000;server.requestTimeout=30000;
 
 if(require.main===module)server.listen(Number(process.env.PORT)||3000,"0.0.0.0",()=>console.log("Nina iniciada"));
 module.exports={server,generate};
+
 
 

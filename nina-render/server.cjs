@@ -48,9 +48,9 @@ async function generate(messages,fetcher=fetch,env=process.env,options={}){
  const mode=Object.hasOwn(MARITACA_MODELS,options.mode)?options.mode:'balanced';
  const model=MARITACA_MODELS[mode],key=env.MARITACA_API_KEY;
  if(!key){options.onFailure?.({provider:'maritaca',model,status:'not_configured'});return null;}
- const budget=AbortSignal.timeout(options.codeTask?90000:mode==='thinking'?80000:mode==='fast'?30000:45000);
+ const budget=AbortSignal.timeout(options.codeTask?90000:mode==='thinking'?95000:mode==='fast'?40000:60000);
  const signal=options.signal?AbortSignal.any([options.signal,budget]):budget;
- const payload={model,messages,stream:false,max_tokens:options.codeTask?(mode==='thinking'?16000:mode==='fast'?6000:10000):(mode==='thinking'?8192:mode==='fast'?1200:4000),...(options.media?{extraction_effort:'advanced'}:{})};
+ const payload={model,messages,stream:false,max_tokens:options.codeTask?(mode==='thinking'?24000:mode==='fast'?8000:16000):(mode==='thinking'?12000:mode==='fast'?2000:8000),...(options.media?{extraction_effort:'advanced'}:{})};
  for(let attempt=0;attempt<2;attempt++){
   if(options.signal?.aborted)throw new HttpError(499,'Solicitação cancelada.');
   if(signal.aborted)return null;

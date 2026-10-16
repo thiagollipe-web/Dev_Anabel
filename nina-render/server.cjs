@@ -1,5 +1,13 @@
 "use strict";
 const http = require("node:http");
+const crypto=require("node:crypto");
+const loginPage= require("node:fs").readFileSync(require("node:path").join(__dirname,"login.html"));
+const sessions=new Map();const loginAttempts=new Map();
+function digest(text){return crypto.createHash("sha256").update(String(text)).digest();}
+function same(a,b){return crypto.timingSafeEqual(digest(a),digest(b));}
+function sessionKey(req){const match=/(?:^|;\s*)nina_session=([a-f0-9]{64})(?:;|$)/.exec(req.headers.cookie||"");return match?digest(match[1]).toString("hex"):null;}
+function authenticated(req){const key=sessionKey(req);const expires=key&&sessions.get(key);if(expires&&expires>Date.now())return true;if(key)sessions.delete(key);return false;}
+setInterval(()=>{for(const [key,t]of sessions)if(t<Date.now())sessions.delete(key);for(const [key,v]of loginAttempts)if(v.until<Date.now())loginAttempts.delete(key);},60000).unref();
 const {StringDecoder}=require("node:string_decoder");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -36,13 +44,26 @@ const server=http.createServer(async(req,res)=>{
  res.setHeader("Referrer-Policy","no-referrer");
  res.setHeader("X-Frame-Options","DENY");
  const url=new URL(req.url,"http://localhost");
+
+ if(req.method==="GET"&&url.pathname==="/login"){res.writeHead(200,{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-store","Content-Security-Policy":"default-src 'none'; script-src 'self' 'unsafe-inline'; worker-src 'self'; style-src 'unsafe-inline'; img-src 'self'; connect-src 'self'; manifest-src 'self'; form-action 'self'; frame-ancestors 'none'"});return res.end(loginPage);}
+ if(req.method==="POST"&&url.pathname==="/api/login"){
+  if(!process.env.NINA_LOGIN||!process.env.NINA_PASSWORD)return json(res,503,{error:"Acesso em configuração. Tente novamente em instantes."});
+  if(!(req.headers['content-type']||'').startsWith('application/json'))return json(res,415,{error:"Envie JSON."});
+  if(req.headers.origin){try{if(new URL(req.headers.origin).host!==req.headers.host)return json(res,403,{error:"Origem não permitida."});}catch{return json(res,403,{error:"Origem inválida."});}}
+  const ip=String(req.socket.remoteAddress);let attempts=loginAttempts.get(ip);if(!attempts||attempts.until<Date.now()){attempts={count:0,until:Date.now()+600000};loginAttempts.set(ip,attempts);}if(attempts.count>=10)return json(res,429,{error:"Muitas tentativas. Aguarde dez minutos."});
+  let raw='';try{for await(const c of req){raw+=c.toString();if(raw.length>4096)return json(res,413,{error:"Dados muito grandes."});}const body=JSON.parse(raw);const userOK=same(body.username||'',process.env.NINA_LOGIN),passOK=same(body.password||'',process.env.NINA_PASSWORD);if(!userOK||!passOK){attempts.count++;return json(res,401,{error:"Login ou senha incorretos."});}loginAttempts.delete(ip);if(sessions.size>=1000)return json(res,503,{error:"Limite de sessões temporário."});const token=crypto.randomBytes(32).toString('hex');sessions.set(digest(token).toString('hex'),Date.now()+43200000);res.setHeader('Set-Cookie','nina_session='+token+'; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=43200');return json(res,200,{ok:true});}catch{return json(res,400,{error:"Dados de acesso inválidos."});}
+ }
+ if(req.method==="POST"&&url.pathname==="/api/logout"){if(req.headers.origin){try{if(new URL(req.headers.origin).host!==req.headers.host)return json(res,403,{error:"Origem não permitida."});}catch{return json(res,403,{error:"Origem inválida."});}}sessions.delete(sessionKey(req));res.setHeader('Set-Cookie','nina_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');return json(res,200,{ok:true});}
+ const publicPaths=['/login','/api/login','/manifest.webmanifest','/sw.js','/icon-192.png','/icon-512.png','/health'];
+ if(!publicPaths.includes(url.pathname)&&!authenticated(req)){if(url.pathname.startsWith('/api/')||url.pathname==='/tools.js')return json(res,401,{error:"Entre na Nina para continuar."});res.writeHead(303,{Location:'/login','Cache-Control':'no-store'});return res.end();}
+ if(req.method==="GET"&&url.pathname==="/api/session")return json(res,200,{authenticated:true});
  if(req.method==="GET"&&["/manifest.webmanifest","/sw.js"].includes(url.pathname)){res.writeHead(200,{"Content-Type":url.pathname.endsWith(".js")?"text/javascript; charset=utf-8":"application/manifest+json; charset=utf-8","Cache-Control":"no-cache","Service-Worker-Allowed":"/"});return res.end(fs.readFileSync(path.join(__dirname,url.pathname.slice(1))));}
  if(req.method==="GET"&&["/icon-192.png","/icon-512.png"].includes(url.pathname)){res.writeHead(200,{"Content-Type":"image/png","Cache-Control":"public, max-age=86400"});return res.end(Buffer.from(appIcons[url.pathname.includes("192")?"192":"512"],"base64"));}
  if(req.method==="GET"&&url.pathname==="/tools.js"){res.writeHead(200,{"Content-Type":"text/javascript; charset=utf-8","Cache-Control":"no-cache"});return res.end(toolsPage);}
  if(req.method==="GET"&&url.pathname==="/api/models"){try{if(!catalogCache||catalogUntil<Date.now()){if(!process.env.MANDAPI_API_KEY)return json(res,503,{error:"MandAPI não configurada."});const r=await fetch("https://api.mandapi.com/v1/models",{headers:{Authorization:"Bearer "+process.env.MANDAPI_API_KEY},signal:AbortSignal.timeout(15000)});if(!r.ok)return json(res,502,{error:"Catálogo indisponível."});const d=await r.json();catalogCache=(Array.isArray(d.data)?d.data:[]).map(m=>({id:m.id,capabilities:m.capabilities,modalities:m.modalities,input_modalities:m.input_modalities,supported_endpoint_types:m.supported_endpoint_types}));catalogUntil=Date.now()+300000;}return json(res,200,{models:catalogCache});}catch{return json(res,502,{error:"Não foi possível consultar modelos."});}}
  if(req.method==="GET"&&url.pathname==="/health")return json(res,200,{status:"ok",providers:{mandapi:!!process.env.MANDAPI_API_KEY,maritaca:!!process.env.MARITACA_API_KEY}});
  if(req.method==="GET"&&(url.pathname==="/"||url.pathname==="/nina")){
-  res.writeHead(200,{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-cache","Content-Security-Policy":"default-src 'none'; manifest-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src 'self' blob: https://cdn.jsdelivr.net; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'unsafe-inline'; connect-src 'self' blob: https://cdn.jsdelivr.net https://tessdata.projectnaptha.com https://huggingface.co https://*.huggingface.co https://*.hf.co; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});return res.end(page);
+  res.writeHead(200,{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-store","Content-Security-Policy":"default-src 'none'; manifest-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src 'self' blob: https://cdn.jsdelivr.net; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'unsafe-inline'; connect-src 'self' blob: https://cdn.jsdelivr.net https://tessdata.projectnaptha.com https://huggingface.co https://*.huggingface.co https://*.hf.co; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});return res.end(page);
  }
  if(url.pathname!=="/api/chat")return json(res,404,{error:"Não encontrado."});
  if(req.method!=="POST")return json(res,405,{error:"Use POST."});

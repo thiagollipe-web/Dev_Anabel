@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const toolsPage = fs.readFileSync(path.join(__dirname, "tools.js"));
 const page = fs.readFileSync(path.join(__dirname, "index.html"));
+let catalogCache=null;let catalogUntil=0;
 const limits = new Map();
 setInterval(() => { for (const [k,v] of limits) if (v.until < Date.now()) limits.delete(k); },60000).unref();
 function json(res,status,data){res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"});res.end(JSON.stringify(data));}
@@ -29,6 +30,7 @@ const server=http.createServer(async(req,res)=>{
  res.setHeader("X-Frame-Options","DENY");
  const url=new URL(req.url,"http://localhost");
  if(req.method==="GET"&&url.pathname==="/tools.js"){res.writeHead(200,{"Content-Type":"text/javascript; charset=utf-8","Cache-Control":"no-cache"});return res.end(toolsPage);}
+ if(req.method==="GET"&&url.pathname==="/api/models"){try{if(!catalogCache||catalogUntil<Date.now()){if(!process.env.MANDAPI_API_KEY)return json(res,503,{error:"MandAPI não configurada."});const r=await fetch("https://api.mandapi.com/v1/models",{headers:{Authorization:"Bearer "+process.env.MANDAPI_API_KEY},signal:AbortSignal.timeout(15000)});if(!r.ok)return json(res,502,{error:"Catálogo indisponível."});const d=await r.json();catalogCache=(Array.isArray(d.data)?d.data:[]).map(m=>({id:m.id,capabilities:m.capabilities,modalities:m.modalities,input_modalities:m.input_modalities,supported_endpoint_types:m.supported_endpoint_types}));catalogUntil=Date.now()+300000;}return json(res,200,{models:catalogCache});}catch{return json(res,502,{error:"Não foi possível consultar modelos."});}}
  if(req.method==="GET"&&url.pathname==="/health")return json(res,200,{status:"ok",providers:{mandapi:!!process.env.MANDAPI_API_KEY,maritaca:!!process.env.MARITACA_API_KEY}});
  if(req.method==="GET"&&(url.pathname==="/"||url.pathname==="/nina")){
   res.writeHead(200,{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-cache","Content-Security-Policy":"default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src blob: https://cdn.jsdelivr.net; img-src 'self' blob: data:; style-src 'unsafe-inline'; connect-src 'self' blob: https://cdn.jsdelivr.net https://tessdata.projectnaptha.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});return res.end(page);

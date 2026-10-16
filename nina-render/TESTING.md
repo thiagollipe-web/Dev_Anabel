@@ -75,6 +75,8 @@ Critério de liberação: testes afetados aprovados e ausência de novas falhas 
 ## Resultado local
 
 - 20 testes de unidade/integração aprovados.
-- 9 cenários de interface aprovados em Chromium.
+- 10 cenários de interface aprovados em Chromium.
 - Nenhuma regressão TODO nesta suíte.
 - Exportações, OCR, mídia e carga prolongada não foram revalidados nesta execução.
+
+Lista de conversas: renderização inicial limitada a 60 registros; busca percorre todos os metadados. Ensaio sintético com 1.000 conversas e CPU 6×: 313,5 ms antes e 33,2 ms depois para reconstrução e layout inicial. Amostra de laboratório, sem garantia de FPS em aparelhos reais.

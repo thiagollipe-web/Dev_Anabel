@@ -1,0 +1,21 @@
+name: Nina QA
+on:
+  push:
+    paths: ['nina-render/**', '.github/workflows/nina-qa.yml']
+  pull_request:
+    paths: ['nina-render/**', '.github/workflows/nina-qa.yml']
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test nina-render/test/*.test.cjs
+      - run: node --check nina-render/tools.js && node --check nina-render/storage.js && node --check nina-render/spreadsheet-worker.js

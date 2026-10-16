@@ -13,15 +13,15 @@ async function generate(messages, fetcher=fetch, env=process.env, options={}){
  {name:"mandapi",key:env.MANDAPI_API_KEY,model:options.model||env.MANDAPI_MODEL||"deepseek-v4-flash",url:"https://api.mandapi.com/v1/chat/completions"},
  {name:"maritaca",key:env.MARITACA_API_KEY,model:env.MARITACA_MODEL||"sabia-4",url:"https://chat.maritaca.ai/api/chat/completions"}
  ];
- if(options.media)providers.splice(1);
+ if(options.media){providers.splice(0,providers.length,...(options.models||[options.model]).map(model=>({name:"mandapi",key:env.MANDAPI_API_KEY,model,url:"https://api.mandapi.com/v1/chat/completions"})));}
  for(const p of providers){
   if(!p.key)continue;
   try{
    const r=await fetcher(p.url,{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+p.key},body:JSON.stringify({model:p.model,messages,stream:false,max_tokens:options.mode==="fast"?1200:4000}),signal:AbortSignal.timeout(45000)});
-   if(!r.ok)continue;
+   if(!r.ok){if(options.onFailure)options.onFailure({model:p.model,status:r.status});continue;}
    const data=await r.json();const text=data?.choices?.[0]?.message?.content;
    if(typeof text==="string"&&text.trim())return {text,provider:p.name,model:p.model};
-  }catch{}
+  }catch{if(options.onFailure)options.onFailure({model:p.model,status:"timeout_or_network"});}
  }
  return null;
 }
@@ -62,13 +62,14 @@ const server=http.createServer(async(req,res)=>{
   if(Array.isArray(body.media)&&body.media.length&&!media.length)return json(res,400,{error:"Mídia inválida ou muito grande."});
   if(media.length){messages[messages.length-1].content=[{type:"text",text:body.prompt.trim()+"\nConsidere as mídias anexadas. Vídeos são quadros amostrados; não deduza o que ocorreu nos intervalos. Áudios: transcreva ou interprete somente o que estiver audível."},...media.flatMap(m=>m.type==="image"?[{type:"text",text:String(m.name||"Imagem").slice(0,160)},{type:"image_url",image_url:{url:m.data}}]:[{type:"input_audio",input_audio:{data:m.data,format:"wav"}}])];}
   const selectedModel=media.some(m=>m.type==="audio")?"gemini-3.8-flash":media.length?"deepseek-v4-flash-vision-exp":mode==="fast"?"deepseek-v4-flash":"deepseek-v4-pro";
-  let result=await generate(messages,fetch,process.env,{mode,model:selectedModel,media:media.length>0});
+  const failures=[];const models=media.some(m=>m.type==="audio")?["gemini-3.8-flash"]:media.length?["deepseek-v4-flash-vision-exp","gemini-3.8-flash","claude-sonnet-4-6"]:[selectedModel];
+  let result=await generate(messages,fetch,process.env,{mode,model:selectedModel,models,media:media.length>0,onFailure:f=>failures.push(f)});
   if(result&&mode==="thinking"){
    const reviewed=await generate([...messages,{role:"assistant",content:result.text},{role:"user",content:"Revise a resposta acima usando a solicitação e os anexos. Corrija erros, confira cálculos e afirmações sem evidência. Entregue somente a resposta final revisada, com justificativa concisa quando útil."}],fetch,process.env,{mode,model:selectedModel,media:media.length>0});
    if(reviewed)result={...reviewed,reviewed:true};else result={...result,reviewed:false,notice:"A revisão adicional ficou indisponível; esta é a primeira resposta."};
   }
   if(result)result.mode=mode;
-  return result?json(res,200,result):json(res,503,{error:"Nenhum provedor respondeu. Confira as chaves, o saldo e os modelos no Render."});
+  return result?json(res,200,result):json(res,503,{error:"Nenhum provedor respondeu. Confira as chaves, o saldo e os modelos no Render.",attempts:failures});
  }catch{return json(res,500,{error:"Falha ao processar a solicitação."});}
 });
 if(require.main===module)server.listen(Number(process.env.PORT)||3000,"0.0.0.0",()=>console.log("Nina iniciada"));

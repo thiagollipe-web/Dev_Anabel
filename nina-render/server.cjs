@@ -1,5 +1,6 @@
 "use strict";
 const http = require("node:http");
+const {StringDecoder}=require("node:string_decoder");
 const fs = require("node:fs");
 const path = require("node:path");
 const toolsPage = fs.readFileSync(path.join(__dirname, "tools.js"));
@@ -34,7 +35,7 @@ const server=http.createServer(async(req,res)=>{
  if(req.method==="GET"&&url.pathname==="/api/models"){try{if(!catalogCache||catalogUntil<Date.now()){if(!process.env.MANDAPI_API_KEY)return json(res,503,{error:"MandAPI não configurada."});const r=await fetch("https://api.mandapi.com/v1/models",{headers:{Authorization:"Bearer "+process.env.MANDAPI_API_KEY},signal:AbortSignal.timeout(15000)});if(!r.ok)return json(res,502,{error:"Catálogo indisponível."});const d=await r.json();catalogCache=(Array.isArray(d.data)?d.data:[]).map(m=>({id:m.id,capabilities:m.capabilities,modalities:m.modalities,input_modalities:m.input_modalities,supported_endpoint_types:m.supported_endpoint_types}));catalogUntil=Date.now()+300000;}return json(res,200,{models:catalogCache});}catch{return json(res,502,{error:"Não foi possível consultar modelos."});}}
  if(req.method==="GET"&&url.pathname==="/health")return json(res,200,{status:"ok",providers:{mandapi:!!process.env.MANDAPI_API_KEY,maritaca:!!process.env.MARITACA_API_KEY}});
  if(req.method==="GET"&&(url.pathname==="/"||url.pathname==="/nina")){
-  res.writeHead(200,{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-cache","Content-Security-Policy":"default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src blob: https://cdn.jsdelivr.net; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'unsafe-inline'; connect-src 'self' blob: https://cdn.jsdelivr.net https://tessdata.projectnaptha.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});return res.end(page);
+  res.writeHead(200,{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-cache","Content-Security-Policy":"default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src blob: https://cdn.jsdelivr.net; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'unsafe-inline'; connect-src 'self' blob: https://cdn.jsdelivr.net https://tessdata.projectnaptha.com https://huggingface.co https://*.huggingface.co https://*.hf.co; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});return res.end(page);
  }
  if(url.pathname!=="/api/chat")return json(res,404,{error:"Não encontrado."});
  if(req.method!=="POST")return json(res,405,{error:"Use POST."});
@@ -46,9 +47,10 @@ const server=http.createServer(async(req,res)=>{
  const ip=req.socket.remoteAddress;const now=Date.now();let bucket=limits.get(ip);
  if(!bucket||bucket.until<now){bucket={count:0,until:now+60000};limits.set(ip,bucket);}
  if(++bucket.count>12)return json(res,429,{error:"Aguarde um minuto antes de continuar."});
- let raw="";let bytes=0;
+ let raw="";let bytes=0;const decoder=new StringDecoder("utf8");
  try{
-  for await(const chunk of req){bytes+=chunk.length;if(bytes>12000000)return json(res,413,{error:"Mensagem muito grande."});raw+=chunk.toString();}
+  for await(const chunk of req){bytes+=chunk.length;if(bytes>12000000)return json(res,413,{error:"Mensagem muito grande."});raw+=decoder.write(chunk);}
+  raw+=decoder.end();
   let body;try{body=JSON.parse(raw);}catch{return json(res,400,{error:"JSON inválido."});}
   if(typeof body.prompt!=="string"||!body.prompt.trim())return json(res,400,{error:"Escreva uma pergunta."});
   if(body.prompt.length>8000)return json(res,413,{error:"Pergunta muito grande."});
@@ -61,8 +63,9 @@ const server=http.createServer(async(req,res)=>{
   const media=(Array.isArray(body.media)?body.media:[]).slice(0,8).filter(m=>m&&((m.type==="image"&&typeof m.data==="string"&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(m.data)&&m.data.length<1800000)||(m.type==="audio"&&typeof m.data==="string"&&/^[A-Za-z0-9+/=]+$/.test(m.data)&&m.data.length<7000000)));
   if(Array.isArray(body.media)&&body.media.length&&!media.length)return json(res,400,{error:"Mídia inválida ou muito grande."});
   if(media.length){messages[messages.length-1].content=[{type:"text",text:body.prompt.trim()+"\nConsidere as mídias anexadas. Vídeos são quadros amostrados; não deduza o que ocorreu nos intervalos. Áudios: transcreva ou interprete somente o que estiver audível."},...media.flatMap(m=>m.type==="image"?[{type:"text",text:String(m.name||"Imagem").slice(0,160)},{type:"image_url",image_url:{url:m.data}}]:[{type:"input_audio",input_audio:{data:m.data,format:"wav"}}])];}
-  const selectedModel=media.some(m=>m.type==="audio")?"gemini-3.8-flash":media.length?"deepseek-v4-flash-vision-exp":mode==="fast"?"deepseek-v4-flash":"deepseek-v4-pro";
-  const failures=[];const models=media.some(m=>m.type==="audio")?["gemini-3.8-flash"]:media.length?["deepseek-v4-flash-vision-exp","gemini-3.8-flash","claude-sonnet-4-6"]:[selectedModel];
+  const selectedModel=media.some(m=>m.type==="audio")?"gemini-3.8-flash":media.length?"gemini-3.8-flash":mode==="fast"?"deepseek-v4-flash":"deepseek-v4-pro";
+  const failures=[];const models=media.some(m=>m.type==="audio")?["gemini-3.8-flash"]:media.length?["gemini-3.8-flash","claude-sonnet-4-6"]:[selectedModel];
+  if(media.some(m=>m.type==="audio"))return json(res,422,{error:"Envie áudio pelo anexo da interface: a fala é transcrita pelo Whisper local antes da análise. Áudio direto neste gateway não foi validado."});
   let result=await generate(messages,fetch,process.env,{mode,model:selectedModel,models,media:media.length>0,onFailure:f=>failures.push(f)});
   if(result&&mode==="thinking"){
    const reviewed=await generate([...messages,{role:"assistant",content:result.text},{role:"user",content:"Revise a resposta acima usando a solicitação e os anexos. Corrija erros, confira cálculos e afirmações sem evidência. Entregue somente a resposta final revisada, com justificativa concisa quando útil."}],fetch,process.env,{mode,model:selectedModel,media:media.length>0});

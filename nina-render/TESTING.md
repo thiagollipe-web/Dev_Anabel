@@ -41,7 +41,7 @@ Opcional: `NINA_QA_CHROMIUM` seleciona um Chromium já instalado. A suíte usa u
 | Notas | Média conferida sem LLM | Zero diferente de ausente; duplicata, nota inválida e fonte parcial recusadas | Automatizada |
 | Escala de tabela | Todos os 1.800 alunos entram no cálculo | Sem amostragem ou corte silencioso | Automatizada |
 | Modelo | Resposta completa aceita pelo fluxo | Saída truncada recusada | Automatizada no contrato do provedor |
-| Intenção | Pedido real de notas reconhecido | Pergunta conceitual não deve exigir tabela | Regressão conhecida: BUG-NINA-001 |
+| Intenção | Pedido real de notas reconhecido | Pergunta conceitual não deve exigir tabela | Automatizada; falso positivo corrigido |
 | Anexos | CSV/XLSX, foto, PDF com texto/OCR | Arquivo corrompido, acima do limite, ZIP expandido e imagem muito grande | Roteiro a automatizar |
 | Materiais | Baixar PPTX/DOCX/XLSX/PDF válidos | Arquivo vazio, tema errado e resposta de recusa não viram documento | Roteiro a automatizar |
 | Áudio/vídeo | Transcrição de fixture licenciada conhecida | Acima de 120 s, sem fala e formato não decodificável | Roteiro a automatizar |
@@ -53,7 +53,7 @@ Opcional: `NINA_QA_CHROMIUM` seleciona um Chromium já instalado. A suíte usa u
 - `test/grades.test.cjs`: cálculos e validação de tabelas.
 - `test/http-safety.test.cjs`: limites, cache, concorrência e endereço do cliente.
 - `test/server.test.cjs`: contratos HTTP reais e proteção do servidor.
-- `test/intent-regression.test.cjs`: defeito conhecido explicitamente marcado TODO.
+- `test/intent-regression.test.cjs`: regressões do detector de intenção.
 - `test/e2e/ui.test.cjs`: navegador real, autenticação, layout, temas, histórico e falhas.
 - `.github/workflows/nina-qa.yml`: execução automática em push e pull request.
 
@@ -63,17 +63,18 @@ A suíte de interface usa o servidor real local para login, página, scripts, CS
 
 Testes de carga devem ocorrer em ambiente isolado, com orçamento e concorrência limitados. Para materiais, adicionar fixtures sintéticas e verificar assinatura ZIP/PDF, XML interno, contagem de páginas/slides e valores de células, além de inspeção visual de amostras. Para OCR/transcrição, comparar com texto esperado usando tolerância definida; não usar dados pessoais.
 
-## Defeito conhecido e critério de liberação
+## Regressões corrigidas na auditoria
 
-**BUG-NINA-001:** o detector de notas usa palavras amplas como `escolar` e `desempenho`. A frase “Explique a aprendizagem escolar e compare o desempenho de SNN.” produz falso positivo e pode bloquear uma conversa sem tabela.
+- Perguntas conceituais sobre aprendizagem escolar não exigem planilha de notas.
+- Nova conversa bloqueia o envio enquanto termina a persistência anterior.
+- Erro ao salvar preserva o rascunho e o aviso de armazenamento.
+- Navegação offline mostra aviso de conexão, sem cachear o chat privado.
 
-O teste TODO executa a asserção e registra a falha conhecida; ela não é contabilizada como aprovação. O Node permite exit code zero com TODO. Logo, CI verde não significa que esse defeito foi corrigido. Para encerrar a correção, remover TODO, demonstrar que a regressão passa e preservar os cenários legítimos de notas.
+Critério de liberação: testes afetados aprovados e ausência de novas falhas relevantes. Aprovação desta suíte não comprova desempenho de campo nem ausência total de defeitos.
 
-Critério para liberar uma mudança: testes afetados aprovados, nenhum novo defeito crítico, triagem explícita dos TODOs e evidência dos fluxos alterados. Não afirmar ausência total de falhas com base nessa suíte.
+## Resultado local
 
-## Resultado da execução local de referência
-
-- 18 testes de unidade/integração aprovados.
-- 6 cenários de interface aprovados em Chromium.
-- 1 regressão conhecida TODO, com asserção falhando conforme descrito acima.
-- Exportações, OCR, mídia, carga e acessibilidade completa não foram revalidados nesta execução.
+- 20 testes de unidade/integração aprovados.
+- 9 cenários de interface aprovados em Chromium.
+- Nenhuma regressão TODO nesta suíte.
+- Exportações, OCR, mídia e carga prolongada não foram revalidados nesta execução.

@@ -2,6 +2,8 @@
 function attachCodeDownloads(article,text){
  let files;try{files=NinaArtifacts.files(text);}catch(e){const note=document.createElement('small');note.textContent=e.message;article.append(note);return;}
  if(!files.length)return;
+ // Render source as text, preserving operators and HTML examples.
+ article.replaceChildren();let position=0;const fence=/^(`{3,}|~{3,})([^\n]*)\n([\s\S]*?)^\1[ \t]*$/gm;for(const match of text.matchAll(fence)){article.append(document.createTextNode(text.slice(position,match.index)));const pre=document.createElement('pre'),code=document.createElement('code');code.textContent=match[3];pre.append(code);article.append(pre);position=match.index+match[0].length;}article.append(document.createTextNode(text.slice(position)));
  const controls=document.createElement('div');controls.className='code-downloads';
  const note=document.createElement('small');note.textContent='Arquivos de código propostos — não executados. Revise antes de usar.';controls.append(note);
  for(const file of files){const button=document.createElement('button');button.type='button';button.textContent='↓ '+file.name;button.onclick=()=>download(new Blob([file.content],{type:'text/plain;charset=utf-8'}),file.name.split('/').pop());controls.append(button);}

@@ -36,3 +36,10 @@ jobs:
         working-directory: nina-render
       - run: npm run test:e2e
         working-directory: nina-render
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nina-qa-screenshots
+          path: nina-render/qa-screenshots
+          retention-days: 3
